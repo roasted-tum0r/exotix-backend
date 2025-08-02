@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" // or your DB of choice
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+model User {
+  id          Int        @id @default(autoincrement())
+  name        String?
+  phone       String?    @unique
+  email       String?    @unique
+  password    String?
+  isVerified  Boolean    @default(false)
+  role        UserRole   @default(CUSTOMER)
+  orders      Order[]
+  cartItems   CartItem[]
+  addresses   Address[]  // new: multiple addresses
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  // Employees only (optional)
+  employee   Employee?   // ← null for customers
+  images     Image[]
+  reviews    Review[]
+  carts      Cart[]
+}
+
+model Address {
+  id           Int         @id @default(autoincrement())
+  user         User        @relation(fields: [userId], references: [id])
+  userId       Int
+  receiverName String
+  type         AddressType @default(HOME)
+  line1        String
+  line2        String? 
+  city         String
+  state        String
+  country      String
+  postalCode   String
+  latitude     String?
+  longitude    String?
+  isDefault    Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Optional: orders using this address for shipping/billing
+  OrdersAsShipping Order[]  @relation("ShippingAddress")
+  OrdersAsBilling  Order[]  @relation("BillingAddress")
+}
+
+model Item {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  image       String?
+  price       Float
+  inventory   Int
+  isAvailable Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  inventories Inventory[]  // one item can be in multiple branches' inventory
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+   // Relationships
+  reviews     Review[]  // One-to-many
+  images      Image[]   // One-to-many
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  quantity  Int      @default(1)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  item      Item     @relation(fields: [itemId], references: [id])
+  itemId    Int
+  cart      Cart     @relation(fields: [cartId], references: [id])
+  cartId    Int
+  addedAt   DateTime @default(now())
+  @@unique([userId, itemId]) // Composite unique constraint
+}
+
+model Order {
+  id                 Int         @id @default(autoincrement())
+  user               User        @relation(fields: [userId], references: [id])
+  userId             Int
+  status             OrderStatus @default(PENDING)
+  totalAmount        Float
+  placedAt           DateTime    @default(now())
+
+  branch             Branch      @relation(fields: [branchId], references: [id])
+  branchId           Int
+  shippingAddress    Address?    @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  shippingAddressId  Int?
+  billingAddress     Address?    @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  billingAddressId   Int?
+
+  orderItems         OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   Int
+  item      Item    @relation(fields: [itemId], references: [id])
+  itemId    Int
+  quantity  Int     @default(1)
+  price     Float   // snapshot of price at purchase
+}
+
+model Branch {
+  id      Int     @id @default(autoincrement())
+  name    String
+  address String
+  city    String
+  state   String
+  phone   String
+  createdAt DateTime @default(now())
+
+  inventory Inventory[]
+  orders    Order[]
+  employees Employee[]  // not User[]
+   // Relationships
+  reviews     Review[]  // One-to-many
+  images      Image[]   // One-to-many
+}
+
+model Inventory {
+  id        Int     @id @default(autoincrement())
+  itemId    Int
+  branchId  Int
+  quantity  Int
+  updatedAt DateTime @updatedAt
+
+  item      Item   @relation(fields: [itemId], references: [id])
+  branch    Branch @relation(fields: [branchId], references: [id])
+}
+
+model Employee {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @unique
+  branchId  Int
+  position  String  // like 'cashier', 'manager', etc.
+
+  user      User    @relation(fields: [userId], references: [id])
+  branch    Branch  @relation(fields: [branchId], references: [id])
+}
+
+
+model JoinUs{
+  id        Int     @id @default(autoincrement())
+  name String
+  email String
+}
+
+model ContactUs{
+  id        Int     @id @default(autoincrement())
+  name String
+  email String
+  subject String?
+}
+
+model Image {
+  id         Int      @id @default(autoincrement())
+  imageUrl   String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+
+  item       Item?    @relation(fields: [itemId], references: [id])
+  itemId     Int?
+
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+  branchId   Int?
+
+  review     Review?  @relation(fields: [reviewId], references: [id])
+  reviewId   Int?
+
+  uploadedAt DateTime @default(now())
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  content    String
+  rating     Int      // Rating between 1–5 or use Float
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+
+  item       Item?    @relation(fields: [itemId], references: [id])
+  itemId     Int?
+
+  branch     Branch?  @relation(fields: [branchId], references: [id])
+  branchId   Int?
+
+  images     Image[]
+
+  createdAt  DateTime @default(now())
+}
+model Cart {
+  id        Int        @id @default(autoincrement())
+  name      String     // Optional: "Bulk Order", "Gift", etc.
+  user      User       @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime   @default(now())
+
+  items     CartItem[]
+}

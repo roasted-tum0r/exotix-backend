@@ -30,7 +30,8 @@ enum AddressType {
 
 model User {
   id          Int        @id @default(autoincrement())
-  name        String?
+  firstname   String
+  lastname    String?
   phone       String?    @unique
   email       String?    @unique
   password    String?
@@ -41,6 +42,7 @@ model User {
   addresses   Address[]  // new: multiple addresses
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  isActive    Boolean    @default(true)
   // Employees only (optional)
   employee   Employee?   // ← null for customers
   images     Image[]
@@ -159,13 +161,14 @@ model Inventory {
 }
 
 model Employee {
-  id        Int     @id @default(autoincrement())
-  userId    Int     @unique
-  branchId  Int
-  position  String  // like 'cashier', 'manager', etc.
-
-  user      User    @relation(fields: [userId], references: [id])
-  branch    Branch  @relation(fields: [branchId], references: [id])
+  id           Int     @id @default(autoincrement())
+  userId       Int     @unique
+  branchId     Int
+  position     String  // like 'cashier', 'manager', etc.
+  companyEmail String?
+  isActive     Boolean  @default(true)
+  user         User    @relation(fields: [userId], references: [id])
+  branch       Branch  @relation(fields: [branchId], references: [id])
 }
 
 

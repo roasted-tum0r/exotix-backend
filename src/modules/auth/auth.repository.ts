@@ -1,0 +1,77 @@
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma, User } from '@prisma/client';
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { CreateAuthUserDto } from './dto/create-auth.dto';
+@Injectable()
+export class UserRepository {
+  constructor(private prisma: PrismaService) {}
+  async findByUserId(userId: number) {
+    try {
+      return await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `User not found!`,
+      });
+    }
+  }
+  async findByEmail(email: string) {
+    try {
+      return this.prisma.user.findUnique({ where: { email } });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async findByPhone(phone: string) {
+    try {
+      return this.prisma.user.findUnique({ where: { phone } });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async createNewUser(
+    data: Omit<CreateAuthUserDto, 'registrationPurpose'> & { password: string },
+  ): Promise<User> {
+    return this.prisma.user.create({
+      data,
+    });
+  }
+  async createNewEmployee(
+    userId: number,
+    branchId: number,
+    employeeData: Omit<Prisma.EmployeeCreateInput, 'user'|'branch'>,
+  ) {
+    return this.prisma.employee.create({
+      data: {
+        ...employeeData,
+        user: { connect: { id: userId } },
+        branch: { connect: { id: branchId } },
+      },
+    });
+  }
+  async updateUserVerified(userId: number) {
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: { isVerified: true },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+}

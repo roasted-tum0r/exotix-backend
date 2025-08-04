@@ -1,6 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import {  CreateAuthUserDto, LoginWithPasswordDto } from './dto/create-auth.dto';
+import {
+  CreateAuthUserDto,
+  LoginOtpVerifyDto,
+  LoginWithOtpDto,
+  LoginWithPasswordDto,
+} from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 
 @Controller('auth')
@@ -39,7 +53,36 @@ export class AuthController {
       };
     }
   }
-
+  // @Public('requestLoginOtp')
+  @Post('/request-otp')
+  async requestLoginOtp(@Body() body: LoginWithOtpDto) {
+    try {
+      return await this.authUserService.requestLoginOtp(body);
+    } catch (error) {
+      console.error('Error in requestLoginOtp:', error);
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to log in. Something went wrong.',
+        data: null,
+      };
+    }
+  }
+  // @Public('verifyLoginOtp')
+  @Post('/verify-otp')
+  async verifyLoginOtp(@Body() body: LoginOtpVerifyDto) {
+    try {
+      return await this.authUserService.verifyLoginOtp(body);
+    } catch (error) {
+      console.error('Error in verifyLoginOtp:', error);
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to log in. Something went wrong.',
+        data: null,
+      };
+    }
+  }
   @Get()
   findAll() {
     return this.authUserService.findAll();

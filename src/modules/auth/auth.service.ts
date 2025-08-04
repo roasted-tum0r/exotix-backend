@@ -5,21 +5,31 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateAuthUserDto, LoginWithPasswordDto } from './dto/create-auth.dto';
+import {
+  CreateAuthUserDto,
+  LoginOtpVerifyDto,
+  LoginWithOtpDto,
+  LoginWithPasswordDto,
+} from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { UserRepository } from './auth.repository';
 import { User } from '@prisma/client';
 import { RegistrationAs, LoginType } from 'src/config/enums/authuser-enums';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { MailService } from 'src/services/mail/mailservice.service';
+import { RedisService } from 'src/services/redis/redis.service';
+import { Templates } from 'src/config/templates/template';
 
 @Injectable()
 export class AuthService {
+  private static retryOtpCount: number = 0;
+  private static MAX_RETRY_COUNT: number = 5;
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
-    // private readonly redisService: RedisService,
-    // private readonly mailService: MailService,
+    private readonly redisService: RedisService,
+    private readonly mailService: MailService,
   ) {}
   async postNewUser(body: CreateAuthUserDto) {
     try {
@@ -56,7 +66,7 @@ export class AuthService {
         password: passHash,
       });
       if (registrationPurpose === RegistrationAs.EMPLOYEE) {
-        await this.userRepository.createNewEmployee(user.id, 0, {
+        await this.userRepository.createNewEmployee(user.id, 1, {
           companyEmail: ``,
           isActive: true,
           position: 'Employee',
@@ -64,31 +74,17 @@ export class AuthService {
       }
       const payload = { sub: user.id, role: user.role, email: user.email };
       const accessToken = this.jwtService.sign(payload);
-      // await this.mailService.sendMail(
-      //   'Plateful <onboarding@resend.dev>',
-      //   user.email,
-      //   '🎉 Welcome to Plateful!',
-      //   Templates.welcomeEmail(user.first_name),
-      // );
-      // await this.requestLoginOtp({
-      //   loginType: LoginType.EMAIL,
-      //   identifier: user.email,
-      // });
-      return {
-        statusCode: HttpStatus.CREATED,
-        error: false,
-        message: `User ${body.firstname} ${body.lastname} has been created successfully!`,
-        data: {
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          createdat: user.createdAt,
-          accesstoken: accessToken,
-        },
-      };
+      await this.mailService.sendMail(
+        `Anandini's <onboarding@resend.dev>`,
+        body.email,
+        `🎉 Welcome to Anandini's!`,
+        Templates.welcomeEmail(user.firstname),
+      );
+      const requestLoginOtp = await this.requestLoginOtp({
+        loginType: LoginType.EMAIL,
+        identifier: body.email,
+      });
+      return requestLoginOtp;
     } catch (error) {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -119,25 +115,69 @@ export class AuthService {
           message: `Invalid credentials: Incorrect password. Please enter the correct password.`,
         });
       }
-      const jwtPayload = {
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-      };
-      const jwtToken = await this.jwtService.signAsync(jwtPayload);
+      // const jwtPayload = {
+      //   sub: user.id,
+      //   email: user.email,
+      //   role: user.role,
+      // };
+      // const jwtToken = await this.jwtService.signAsync(jwtPayload);
+      const requestLoginOtp = await this.requestLoginOtp({
+        loginType,
+        identifier,
+      });
+      return requestLoginOtp;
+    } catch (error) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error.message || 'Failed to log in. Something went wrong.',
+      });
+    }
+  }
+  async requestLoginOtp(body: LoginWithOtpDto) {
+    try {
+      const { identifier, loginType } = body;
+      const user =
+        loginType == LoginType.EMAIL
+          ? await this.userRepository.findByEmail(identifier)
+          : await this.userRepository.findByPhone(identifier);
+      if (!user) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Invalid credentials: Account with this email or phonenumber doesn't exist.`,
+        });
+      }
+      const otp = AuthService.generateOtp(6);
+      const hash = AuthService.generateHash(4);
+      const OTP_EXPIRY_TIME: number = process.env.OTP_EXPIRY_TIME
+        ? +process.env.OTP_EXPIRY_TIME
+        : 420;
+      await this.redisService.setValue(
+        `otp:user:${user.id}`,
+        otp,
+        hash,
+        OTP_EXPIRY_TIME ?? 420,
+      );
+      await this.mailService.sendMail(
+        `Anandini's <noreply@resend.dev>`,
+        user?.email!,
+        'Your One-Time Password (OTP)',
+        Templates.loginOtpEmail({
+          firstName: user?.firstname!,
+          otp,
+          hash,
+          expirySeconds: OTP_EXPIRY_TIME,
+        }),
+      );
+      // AppLogger.log(otp, hash);
+      await this.checkRedisConnection();
       return {
         statusCode: HttpStatus.OK,
         error: false,
-        message: `Welcome back ${user.firstname} ${user.lastname}!`,
+        message: `Your OTP has been sent to your email : ${user.email}`,
         data: {
-          id: user.id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          createdat: user.createdAt,
-          accessToken: jwtToken,
+          hash_key: hash,
         },
       };
     } catch (error) {
@@ -147,6 +187,113 @@ export class AuthService {
         message: error.message || 'Failed to log in. Something went wrong.',
       });
     }
+  }
+  async verifyLoginOtp(body: LoginOtpVerifyDto) {
+    try {
+      const { identifier, loginType, OTP, hash_key } = body;
+      const user =
+        loginType == LoginType.EMAIL
+          ? await this.userRepository.findByEmail(identifier)
+          : await this.userRepository.findByPhone(identifier);
+      if (!user) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Invalid credentials: Account with this email or phonenumber doesn't exist.`,
+        });
+      }
+      const sessionKey = `otp:user:${user.id}`;
+      const session = await this.redisService.getSession<{
+        value: string;
+        hash: string;
+      }>(sessionKey, hash_key);
+      if (!session || session.value !== OTP) {
+        const retryLimitReached = await this.retryCount();
+        if (retryLimitReached) {
+          await this.redisService.invalidateSession(`${user.id}`, hash_key);
+          throw new UnauthorizedException({
+            statusCode: HttpStatus.UNAUTHORIZED,
+            error: true,
+            message: `Too many failed attempts. Your OTP session has expired.`,
+          });
+        }
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Invalid or expired OTP.`,
+        });
+      } else if (session.value === OTP && session.hash === hash_key) {
+        await this.redisService.deleteSession(sessionKey, hash_key);
+        const jwtPayload = {
+          sub: user.id,
+          email: user.email,
+          role: user.role,
+          session_id: hash_key,
+        };
+        if (!user.isVerified) {
+          await this.userRepository.updateUserVerified(user.id);
+        }
+        const jwtToken = await this.jwtService.signAsync(jwtPayload);
+        return {
+          statusCode: HttpStatus.OK,
+          error: false,
+          message: `Your OTP has been verified! Welcome back ${user.firstname} ${user.lastname}!`,
+          data: {
+            id: user.id,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            createdat: user.createdAt,
+            accesstoken: jwtToken,
+          },
+        };
+      }
+    } catch (error) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error.message || 'Failed to log in. Something went wrong.',
+      });
+    }
+  }
+  private async retryCount() {
+    if (AuthService.retryOtpCount <= AuthService.MAX_RETRY_COUNT) {
+      AuthService.retryOtpCount++;
+      return false;
+    } else return true;
+  }
+  async checkRedisConnection() {
+    try {
+      console.log('Redis Connected:', await this.redisService.ping()); // Should print "PONG"
+    } catch (err) {
+      console.error('Redis connection failed:', err);
+    }
+  }
+  /**
+   * Generate a 6-digit numeric OTP
+   */
+  static generateOtp(length = 6): string {
+    const digits = '0123456789';
+    let otp = '';
+    for (let i = 0; i < length; i++) {
+      otp += digits[Math.floor(Math.random() * 10)];
+    }
+    return otp;
+  }
+
+  /**
+   * Generate a 5-character alphanumeric hash
+   */
+  static generateHash(length = 5): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let hash = '';
+    for (let i = 0; i < length; i++) {
+      const index = Math.floor(Math.random() * chars.length);
+      hash += chars[index];
+    }
+    return hash;
   }
   create(createAuthUserDto: CreateAuthUserDto) {
     return 'This action adds a new auth';

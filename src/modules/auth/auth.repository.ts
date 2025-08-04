@@ -56,7 +56,7 @@ export class UserRepository {
       data: {
         ...employeeData,
         user: { connect: { id: userId } },
-        branch: { connect: { id: branchId } },
+        branch: { connect: { id: branchId ??1 } },
       },
     });
   }

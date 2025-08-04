@@ -33,7 +33,7 @@ model User {
   firstname   String
   lastname    String?
   phone       String?    @unique
-  email       String?    @unique
+  email       String    @unique
   password    String?
   isVerified  Boolean    @default(false)
   role        UserRole   @default(CUSTOMER)
@@ -48,6 +48,7 @@ model User {
   images     Image[]
   reviews    Review[]
   carts      Cart[]
+  @@unique([email, phone]) // Composite unique constraint
 }
 
 model Address {

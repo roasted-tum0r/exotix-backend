@@ -50,13 +50,13 @@ export class UserRepository {
   async createNewEmployee(
     userId: number,
     branchId: number,
-    employeeData: Omit<Prisma.EmployeeCreateInput, 'user'|'branch'>,
+    employeeData: Omit<Prisma.EmployeeCreateInput, 'user' | 'branch'>,
   ) {
     return this.prisma.employee.create({
       data: {
         ...employeeData,
         user: { connect: { id: userId } },
-        branch: { connect: { id: branchId ??1 } },
+        branch: { connect: { id: branchId ?? 1 } },
       },
     });
   }
@@ -65,6 +65,31 @@ export class UserRepository {
       return await this.prisma.user.update({
         where: { id: userId },
         data: { isVerified: true },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async updateUserById(
+    id: number,
+    updateData: Partial<Prisma.UserUpdateInput>,
+  ) {
+    try {
+      return this.prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          phone: true,
+          email: true,
+          role: true, // include only what you want to expose
+        },
       });
     } catch (error) {
       throw new BadRequestException({

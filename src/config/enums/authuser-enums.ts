@@ -5,4 +5,5 @@ export enum LoginType {
 export enum RegistrationAs {
   CUSTOMER = 'CUSTOMER',
   EMPLOYEE = 'EMPLOYEE',
+  ADMIN = 'ADMIN'
 }

@@ -65,11 +65,11 @@ export class AuthService {
         ...userData,
         password: passHash,
       });
-      if (registrationPurpose === RegistrationAs.EMPLOYEE) {
+      if (registrationPurpose != RegistrationAs.CUSTOMER) {
         await this.userRepository.createNewEmployee(user.id, 1, {
           companyEmail: ``,
           isActive: true,
-          position: 'Employee',
+          position: `${registrationPurpose}`,
         });
       }
       const payload = { sub: user.id, role: user.role, email: user.email };
@@ -258,6 +258,36 @@ export class AuthService {
       });
     }
   }
+  async updateUserInfo(
+    id: number,
+    createAuthUserDto: UpdateAuthDto,
+    user: User,
+  ) {
+    try {
+      if (id != user.id) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Access denied: A person cannot update info of another.`,
+        });
+      }
+      const updatedUser = await this.userRepository.updateUserById(
+        id,
+        createAuthUserDto,
+      );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User info updated successfully',
+        data: updatedUser,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Something went wrong while updating user info',
+      });
+    }
+  }
   private async retryCount() {
     if (AuthService.retryOtpCount <= AuthService.MAX_RETRY_COUNT) {
       AuthService.retryOtpCount++;
@@ -294,9 +324,6 @@ export class AuthService {
       hash += chars[index];
     }
     return hash;
-  }
-  create(createAuthUserDto: CreateAuthUserDto) {
-    return 'This action adds a new auth';
   }
 
   findAll() {

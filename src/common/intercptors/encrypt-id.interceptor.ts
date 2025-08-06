@@ -8,12 +8,14 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { encryptId } from '../utils/encryption';
+import { AppLogger } from '../utils/app.logger';
 
 @Injectable()
 export class EncryptIdInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => {
+         AppLogger.log('[EncryptIdInterceptor] 🔐 Interceptor Hit, Data:', JSON.stringify(data));
         // Encrypt `id` if present
         if (Array.isArray(data)) {
           return data.map((item) => this.encrypt(item));
@@ -24,14 +26,26 @@ export class EncryptIdInterceptor implements NestInterceptor {
     );
   }
 
-  private encrypt(obj: any) {
-  if (!obj || typeof obj !== 'object') return obj;
+  private encrypt(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(item => this.encrypt(item));
+  }
 
-  Object.keys(obj).forEach((key) => {
-    if (key.toLowerCase().endsWith('id') && typeof obj[key] === 'number') {
-      obj[key] = encryptId(obj[key]); // Your encryption logic
+  if (obj && typeof obj === 'object') {
+    const encrypted: any = {};
+    for (const key in obj) {
+      const value = obj[key];
+
+      if (typeof value === 'object') {
+        encrypted[key] = this.encrypt(value);
+      } else if (key.toLowerCase().endsWith('id') && typeof value === 'number') {
+        encrypted[key] = encryptId(value);
+      } else {
+        encrypted[key] = value;
+      }
     }
-  });
+    return encrypted;
+  }
 
   return obj;
 }

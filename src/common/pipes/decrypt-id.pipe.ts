@@ -4,6 +4,7 @@ import { decryptId } from '../utils/encryption';
 
 @Injectable()
 export class DecryptIdPipe implements PipeTransform {
+  
   transform(value: string) {
     try {
       return decryptId(value); // returns number

@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   HttpStatus,
-  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -24,7 +23,7 @@ import { User } from '@prisma/client';
 import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { EncryptIdInterceptor } from 'src/common/intercptors/encrypt-id.interceptor';
 
-@UseInterceptors(EncryptIdInterceptor)
+// @UseInterceptors(EncryptIdInterceptor)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authUserService: AuthService) {}
@@ -103,6 +102,24 @@ export class AuthController {
       return await this.authUserService.updateUserInfo(+id, updateAuthDto, user);
     } catch (error) {
       AppLogger.error('Error in verifyLoginOtp:', error);
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to log in. Something went wrong.',
+        data: null,
+      };
+    }
+  }
+  @Delete('/deactivate-user/:id')
+  async deactivateUser(
+    @Param('id', DecryptIdPipe) id: number,
+    // @Body() updateAuthDto: UpdateAuthDto,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.authUserService.deactivateUser(+id, user);
+    } catch (error) {
+      AppLogger.error('Error in deactivateUser:', error);
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,

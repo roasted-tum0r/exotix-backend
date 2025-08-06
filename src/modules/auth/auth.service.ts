@@ -288,6 +288,36 @@ export class AuthService {
       });
     }
   }
+  async deactivateUser(
+    id: number,
+    // createAuthUserDto: UpdateAuthDto,
+    user: User,
+  ) {
+    try {
+      if (id != user.id) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Access denied: A person cannot delete another user.`,
+        });
+      }
+      const deactivateUser = await this.userRepository.deactivateUser(
+        id,
+        // createAuthUserDto,
+      );
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User deactivated successfully!',
+        data: deactivateUser,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Something went wrong while updating user info',
+      });
+    }
+  }
   private async retryCount() {
     if (AuthService.retryOtpCount <= AuthService.MAX_RETRY_COUNT) {
       AuthService.retryOtpCount++;

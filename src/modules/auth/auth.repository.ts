@@ -8,7 +8,7 @@ export class UserRepository {
   async findByUserId(userId: number) {
     try {
       return await this.prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: userId, isActive:true },
       });
     } catch (error) {
       throw new BadRequestException({
@@ -20,7 +20,7 @@ export class UserRepository {
   }
   async findByEmail(email: string) {
     try {
-      return this.prisma.user.findUnique({ where: { email } });
+      return this.prisma.user.findUnique({ where: { email , isActive:true } });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -31,7 +31,7 @@ export class UserRepository {
   }
   async findByPhone(phone: string) {
     try {
-      return this.prisma.user.findUnique({ where: { phone } });
+      return this.prisma.user.findUnique({ where: { phone, isActive:true } });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -89,6 +89,32 @@ export class UserRepository {
           phone: true,
           email: true,
           role: true, // include only what you want to expose
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async deactivateUser(
+    id: number,
+    // updateData: Partial<Prisma.UserUpdateInput>,
+  ) {
+    try {
+      return this.prisma.user.update({
+        where: { id },
+        data: { isActive: false },
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          phone: true,
+          email: true,
+          role: true, // include only what you want to expose
+          isActive:true,
         },
       });
     } catch (error) {

@@ -9,6 +9,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { GlobalAuthGuard } from './auth/guards/global-auth.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { EncryptIdInterceptor } from './common/intercptors/encrypt-id.interceptor';
+import { PingModule } from './modules/ping/ping.module';
+import { ItemsModule } from './modules/items/items.module';
+import { ItemCategoriesModule } from './modules/item-categories/item-categories.module';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { EncryptIdInterceptor } from './common/intercptors/encrypt-id.intercepto
         },
       },
     }),
+    PingModule,
+    ItemsModule,
+    ItemCategoriesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -28,6 +28,7 @@ enum AddressType {
   OTHER
 }
 
+
 model User {
   id          Int        @id @default(autoincrement())
   firstname   String
@@ -35,6 +36,7 @@ model User {
   phone       String?    @unique
   email       String    @unique
   password    String?
+  isPremium   Boolean   @default(false)
   isVerified  Boolean    @default(false)
   role        UserRole   @default(CUSTOMER)
   orders      Order[]
@@ -74,6 +76,15 @@ model Address {
   OrdersAsBilling  Order[]  @relation("BillingAddress")
 }
 
+model CategoryMaster {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  image    String?
+  isActive Boolean @default(true)
+
+  items    Item[]  // One-to-many
+}
+
 model Item {
   id          Int        @id @default(autoincrement())
   name        String
@@ -81,9 +92,12 @@ model Item {
   image       String?
   price       Float
   inventory   Int
+  categoryId  Int
+  rating      Int?       @default(0)
   isAvailable Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  category    CategoryMaster   @relation(fields: [categoryId], references: [id])
   inventories Inventory[]  // one item can be in multiple branches' inventory
   orderItems  OrderItem[]
   cartItems   CartItem[]

@@ -8,7 +8,7 @@ export class UserRepository {
   async findByUserId(userId: number) {
     try {
       return await this.prisma.user.findUnique({
-        where: { id: userId, isActive:true },
+        where: { id: userId, isActive: true },
       });
     } catch (error) {
       throw new BadRequestException({
@@ -20,7 +20,7 @@ export class UserRepository {
   }
   async findByEmail(email: string) {
     try {
-      return this.prisma.user.findUnique({ where: { email , isActive:true } });
+      return this.prisma.user.findUnique({ where: { email, isActive: true } });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -31,7 +31,7 @@ export class UserRepository {
   }
   async findByPhone(phone: string) {
     try {
-      return this.prisma.user.findUnique({ where: { phone, isActive:true } });
+      return this.prisma.user.findUnique({ where: { phone, isActive: true } });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -43,22 +43,38 @@ export class UserRepository {
   async createNewUser(
     data: Omit<CreateAuthUserDto, 'registrationPurpose'> & { password: string },
   ): Promise<User> {
-    return this.prisma.user.create({
-      data,
-    });
+    try {
+      return this.prisma.user.create({
+        data,
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
   }
   async createNewEmployee(
     userId: number,
     branchId: number,
     employeeData: Omit<Prisma.EmployeeCreateInput, 'user' | 'branch'>,
   ) {
-    return this.prisma.employee.create({
-      data: {
-        ...employeeData,
-        user: { connect: { id: userId } },
-        branch: { connect: { id: branchId ?? 1 } },
-      },
-    });
+    try {
+      return this.prisma.employee.create({
+        data: {
+          ...employeeData,
+          user: { connect: { id: userId } },
+          branch: { connect: { id: branchId ?? 1 } },
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
   }
   async updateUserVerified(userId: number) {
     try {
@@ -114,7 +130,7 @@ export class UserRepository {
           phone: true,
           email: true,
           role: true, // include only what you want to expose
-          isActive:true,
+          isActive: true,
         },
       });
     } catch (error) {

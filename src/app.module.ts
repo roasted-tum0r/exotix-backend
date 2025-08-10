@@ -12,6 +12,7 @@ import { EncryptIdInterceptor } from './common/intercptors/encrypt-id.intercepto
 import { PingModule } from './modules/ping/ping.module';
 import { ItemsModule } from './modules/items/items.module';
 import { ItemCategoriesModule } from './modules/item-categories/item-categories.module';
+import { RolesGuard } from './auth/guards/role-auth.guard';
 
 @Module({
   imports: [
@@ -43,6 +44,10 @@ import { ItemCategoriesModule } from './modules/item-categories/item-categories.
     {
       provide: APP_GUARD,
       useClass: GlobalAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

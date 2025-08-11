@@ -21,6 +21,7 @@ import { User } from '@prisma/client';
 import { Public } from 'src/common/decorators/public.decorator';
 import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { ISearchObject } from 'src/common/interfaces/category.interface';
 
 @Controller('item-categories')
 export class ItemCategoriesController {
@@ -120,6 +121,15 @@ export class ItemCategoriesController {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to delete category',
       });
+    }
+  }
+  @Public('searchCategory')
+  @Post('/search')
+  async search(@Body() searchObject:ISearchObject){
+    try {
+      return this.itemCategoriesService.searchCategories(searchObject);
+    } catch (error) {
+      
     }
   }
 }

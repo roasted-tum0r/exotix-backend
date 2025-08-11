@@ -9,6 +9,7 @@ import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ItemCategoryRepo } from './item-categories.repository';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { ISearchObject } from 'src/common/interfaces/category.interface';
 
 @Injectable()
 export class ItemCategoriesService {
@@ -45,7 +46,34 @@ export class ItemCategoriesService {
       });
     }
   }
-
+  // ✅ Add new categories
+  async searchCategories(searchObject: ISearchObject) {
+    try {
+      const payload = await this.itemCategoriesRepo.searchCategory({
+        ...searchObject,
+        searchText: searchObject.searchText ?? '',
+      });
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Categories were created',
+        data: {
+          ...payload,
+          results: payload.results.map((r) => ({
+            ...r,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
+          })),
+        },
+      };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong while searching category.',
+      });
+    }
+  }
   // ✅ Get all categories
   async getAllCategories() {
     try {
@@ -116,15 +144,15 @@ export class ItemCategoriesService {
         });
       }
       return {
-          statusCode: HttpStatus.OK,
-          error: false,
-          message: `Category: ${category.name} fetched.`,
-          data: {
-            ...category,
-            createdAt: category.createdAt.toISOString(),
-            updatedAt: category.updatedAt.toISOString(),
-          },
-        };
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Category: ${category.name} fetched.`,
+        data: {
+          ...category,
+          createdAt: category.createdAt.toISOString(),
+          updatedAt: category.updatedAt.toISOString(),
+        },
+      };
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -145,17 +173,17 @@ export class ItemCategoriesService {
           message: `Category with ID ${id} not found.`,
         });
       } // check if exists
-      const categoryDeleted=await this.itemCategoriesRepo.deleteCategory(id);
+      const categoryDeleted = await this.itemCategoriesRepo.deleteCategory(id);
       return {
-          statusCode: HttpStatus.OK,
-          error: false,
-          message: `Category: ${categoryDeleted.name} was deleted.`,
-          data: {
-            ...categoryDeleted,
-            createdAt: categoryDeleted.createdAt.toISOString(),
-            updatedAt: categoryDeleted.updatedAt.toISOString(),
-          },
-        };
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Category: ${categoryDeleted.name} was deleted.`,
+        data: {
+          ...categoryDeleted,
+          createdAt: categoryDeleted.createdAt.toISOString(),
+          updatedAt: categoryDeleted.updatedAt.toISOString(),
+        },
+      };
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

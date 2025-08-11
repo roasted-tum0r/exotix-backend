@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
+import { ISearchObject } from 'src/common/interfaces/category.interface';
 @Injectable()
 export class ItemCategoryRepo {
   constructor(private readonly prismaService: PrismaService) {}
@@ -31,14 +32,14 @@ export class ItemCategoryRepo {
           orderBy: { id: 'desc' }, // newest first
           take: bulkData.length,
           select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          _count:true,
-          user:true
-        },
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: true,
+            user: true,
+          },
         });
       } else
         return await this.prismaService.categoryMaster.create({
@@ -48,14 +49,14 @@ export class ItemCategoryRepo {
             updatedBy: userId, // first update = creator, // pass FK directly
           },
           select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          _count:true,
-          user:true
-        },
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: true,
+            user: true,
+          },
         });
     } catch (error) {
       throw new BadRequestException({
@@ -75,8 +76,8 @@ export class ItemCategoryRepo {
           description: true,
           createdAt: true,
           updatedAt: true,
-          _count:true,
-          user:true
+          _count: true,
+          user: true,
         },
       });
     } catch (error) {
@@ -151,5 +152,68 @@ export class ItemCategoryRepo {
         message: 'Something went wrong.',
       });
     }
+  }
+  // async searchCategory(searchObject: ISearchObject) {
+  //   try {
+  //     return this.prismaService.categoryMaster.findMany({
+  //       where: { name },
+  //       orderBy: { id: 'desc' }, // newest first
+  //       take: bulkData.length,
+  //       select: {
+  //         id: true,
+  //         name: true,
+  //         description: true,
+  //         createdAt: true,
+  //         updatedAt: true,
+  //         _count: true,
+  //         user: true,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     throw new BadRequestException({
+  //       statusCode: HttpStatus.BAD_REQUEST,
+  //       error: true,
+  //       message: 'Something went wrong.',
+  //     });
+  //   }
+  // }
+  async searchCategory(searchObject: ISearchObject) {
+    const [categories, total] = await this.prismaService.$transaction([
+      this.prismaService.categoryMaster.findMany({
+        where: {
+          [`${searchObject.sortBy}`]: {
+            contains: searchObject.searchText?.toLowerCase(),
+          },
+          isActive: true,
+        },
+        orderBy: {
+          [`${searchObject.sortBy}`]: searchObject.isAsc ? 'asc' : 'desc',
+        },
+        skip: (searchObject.page - 1) * searchObject.limit,
+        take: searchObject.limit,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prismaService.categoryMaster.count({
+        where: {
+          [`${searchObject.sortBy}`]: {
+            contains: searchObject.searchText?.toLowerCase(),
+          },
+          isActive: true,
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      currentPage: searchObject.page,
+      totalPages: Math.ceil(total / searchObject.limit),
+      results: categories,
+    };
   }
 }

@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
+import { IPagination } from 'src/common/interfaces/app.interface';
 @Injectable()
 export class ItemCategoryRepo {
   constructor(private readonly prismaService: PrismaService) {}
@@ -66,28 +67,7 @@ export class ItemCategoryRepo {
       });
     }
   }
-  async getAllCategories() {
-    try {
-      return await this.prismaService.categoryMaster.findMany({
-        where: { isActive: true },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: true,
-          user: true,
-        },
-      });
-    } catch (error) {
-      throw new BadRequestException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: true,
-        message: 'Something went wrong.',
-      });
-    }
-  }
+
   async getCategoryById(id: number) {
     try {
       return await this.prismaService.categoryMaster.findUnique({
@@ -153,67 +133,87 @@ export class ItemCategoryRepo {
       });
     }
   }
-  // async searchCategory(searchObject: ISearchObject) {
-  //   try {
-  //     return this.prismaService.categoryMaster.findMany({
-  //       where: { name },
-  //       orderBy: { id: 'desc' }, // newest first
-  //       take: bulkData.length,
-  //       select: {
-  //         id: true,
-  //         name: true,
-  //         description: true,
-  //         createdAt: true,
-  //         updatedAt: true,
-  //         _count: true,
-  //         user: true,
-  //       },
-  //     });
-  //   } catch (error) {
-  //     throw new BadRequestException({
-  //       statusCode: HttpStatus.BAD_REQUEST,
-  //       error: true,
-  //       message: 'Something went wrong.',
-  //     });
-  //   }
-  // }
-  async searchCategory(searchObject: ISearchObject) {
-    const [categories, total] = await this.prismaService.$transaction([
-      this.prismaService.categoryMaster.findMany({
-        where: {
-          [`${searchObject.sortBy}`]: {
-            contains: searchObject.searchText?.toLowerCase(),
+  async getAllCategories(paginatinObject: IPagination) {
+    try {
+      const [categories, total] = await this.prismaService.$transaction([
+        this.prismaService.categoryMaster.findMany({
+          where: {
+            isActive: true,
           },
-          isActive: true,
-        },
-        orderBy: {
-          [`${searchObject.sortBy}`]: searchObject.isAsc ? 'asc' : 'desc',
-        },
-        skip: (searchObject.page - 1) * searchObject.limit,
-        take: searchObject.limit,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      this.prismaService.categoryMaster.count({
-        where: {
-          [`${searchObject.sortBy}`]: {
-            contains: searchObject.searchText?.toLowerCase(),
+          orderBy: {
+            [`${paginatinObject.sortBy}`]: paginatinObject.isAsc
+              ? 'asc'
+              : 'desc',
           },
-          isActive: true,
-        },
-      }),
-    ]);
+          skip: (paginatinObject.page - 1) * paginatinObject.limit,
+          take: paginatinObject.limit,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prismaService.categoryMaster.count({
+          where: {
+            isActive: true,
+          },
+        }),
+      ]);
 
-    return {
-      total,
-      currentPage: searchObject.page,
-      totalPages: Math.ceil(total / searchObject.limit),
-      results: categories,
-    };
+      return {
+        total,
+        currentPage: paginatinObject.page,
+        totalPages: Math.ceil(total / paginatinObject.limit),
+        results: categories,
+      };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+  async searchCategory(searchObject: ISearchObject) {
+    try {
+      const [categories, total] = await this.prismaService.$transaction([
+        this.prismaService.categoryMaster.findMany({
+          where: {
+            [`${searchObject.sortBy}`]: {
+              contains: searchObject.searchText?.toLowerCase(),
+            },
+            isActive: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        }),
+        this.prismaService.categoryMaster.count({
+          where: {
+            [`${searchObject.sortBy}`]: {
+              contains: searchObject.searchText?.toLowerCase(),
+            },
+            isActive: true,
+          },
+        }),
+      ]);
+
+      return {
+        total,
+        results: categories,
+      };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
   }
 }

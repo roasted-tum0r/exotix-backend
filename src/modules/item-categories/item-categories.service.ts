@@ -10,6 +10,7 @@ import { ItemCategoryRepo } from './item-categories.repository';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
+import { IPagination } from 'src/common/interfaces/app.interface';
 
 @Injectable()
 export class ItemCategoriesService {
@@ -47,12 +48,22 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Add new categories
-  async searchCategories(searchObject: ISearchObject) {
+  async searchCategories(searchObject: ISearchObject | IPagination) {
     try {
-      const payload = await this.itemCategoriesRepo.searchCategory({
-        ...searchObject,
-        searchText: searchObject.searchText ?? '',
-      });
+      let payload;
+
+      if ('searchText' in searchObject && searchObject.searchText?.trim()) {
+        // Search mode
+        payload = await this.itemCategoriesRepo.searchCategory(searchObject);
+        payload = {
+          ...payload,
+          currentPage: searchObject.page,
+          totalPages: Math.ceil(payload.total / searchObject.limit),
+        };
+      } else {
+        // Normal list mode
+        payload = await this.itemCategoriesRepo.getAllCategories(searchObject);
+      }
       return {
         statusCode: HttpStatus.CREATED,
         error: false,
@@ -75,20 +86,22 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Get all categories
-  async getAllCategories() {
+  async getAllCategories(paginatinObject: IPagination) {
     try {
-      const payload = (await this.itemCategoriesRepo.getAllCategories()).map(
-        (r) => ({
-          ...r,
-          createdAt: r.createdAt.toISOString(),
-          updatedAt: r.updatedAt.toISOString(),
-        }),
-      );
+      const payload =
+        await this.itemCategoriesRepo.getAllCategories(paginatinObject);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Categories were fetched',
-        data: payload,
+        data: {
+          ...payload,
+          results: payload.results.map((r) => ({
+            ...r,
+            createdAt: r.createdAt.toISOString(),
+            updatedAt: r.updatedAt.toISOString(),
+          })),
+        },
       };
     } catch (error) {
       throw new BadRequestException({

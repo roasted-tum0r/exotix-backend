@@ -22,6 +22,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
+import { IPagination } from 'src/common/interfaces/app.interface';
 
 @Controller('item-categories')
 export class ItemCategoriesController {
@@ -75,10 +76,12 @@ export class ItemCategoriesController {
     }
   }
   @Public('findallcategories')
-  @Get()
-  async findAll() {
+  @Post()
+  async findAll(@Body() paginationObject: IPagination) {
     try {
-      return await this.itemCategoriesService.getAllCategories();
+      return await this.itemCategoriesService.getAllCategories(
+        paginationObject,
+      );
     } catch (error) {
       AppLogger.error('Failed to fetch categories', error.stack);
       throw new InternalServerErrorException({
@@ -89,7 +92,7 @@ export class ItemCategoriesController {
   }
   @Public('findOnecategory')
   @Get('/getone/:id')
-  async findOne(@Param('id', DecryptIdPipe) id: number,) {
+  async findOne(@Param('id', DecryptIdPipe) id: number) {
     try {
       const result = await this.itemCategoriesService.getCategoryById(+id);
       if (!result) {
@@ -110,9 +113,8 @@ export class ItemCategoriesController {
   }
   @Roles('admin')
   @Delete('/deactivate/:id')
-  async remove(@Param('id', DecryptIdPipe) id: number,) {
+  async remove(@Param('id', DecryptIdPipe) id: number) {
     try {
-      
       return await this.itemCategoriesService.deleteCategory(+id);
     } catch (error) {
       AppLogger.error(`Failed to delete category with id ${id}`, error.stack);
@@ -125,11 +127,16 @@ export class ItemCategoriesController {
   }
   @Public('searchCategory')
   @Post('/search')
-  async search(@Body() searchObject:ISearchObject){
+  async search(@Body() searchObject: ISearchObject|IPagination) {
     try {
       return this.itemCategoriesService.searchCategories(searchObject);
     } catch (error) {
-      
+      AppLogger.error(`Failed search`, error.stack);
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete category',
+      });
     }
   }
 }

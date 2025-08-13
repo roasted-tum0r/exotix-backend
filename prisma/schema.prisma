@@ -53,6 +53,8 @@ model User {
   // Relations for CategoryMaster
   categoriesCreated CategoryMaster[] @relation("CategoryCreator")
   categoriesUpdated CategoryMaster[] @relation("CategoryUpdater")
+  ItemsCreated Item[] @relation("ItemCreator")
+  ItemsUpdated Item[] @relation("ItemUpdater")
   @@unique([email, phone]) // Composite unique constraint
 }
 
@@ -100,12 +102,19 @@ model Item {
   description String?
   image       String?
   price       Float
-  inventory   Int
   categoryId  Int
-  rating      Int?       @default(0)
+  rating      Int     @default(0)
   isAvailable Boolean    @default(true)
+  isActive    Boolean    @default(true)
+  createdBy   Int
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  discountPercentage Float? @default(0)
+  discountStart      DateTime?
+  discountEnd        DateTime?
+  updatedBy   Int
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation("ItemCreator", fields: [createdBy], references: [id])
+  updater     User     @relation("ItemUpdater", fields: [updatedBy], references: [id])
   category    CategoryMaster   @relation(fields: [categoryId], references: [id])
   inventories Inventory[]  // one item can be in multiple branches' inventory
   orderItems  OrderItem[]
@@ -118,6 +127,8 @@ model Item {
 model CartItem {
   id        Int      @id @default(autoincrement())
   quantity  Int      @default(1)
+  realPrice        Decimal  @db.Decimal(10, 2) // price before discount at time of adding
+  discountedPrice  Decimal  @db.Decimal(10, 2) // final price after discount
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
   item      Item     @relation(fields: [itemId], references: [id])

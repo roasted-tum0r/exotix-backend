@@ -7,7 +7,7 @@ export class FilterItemDto {
 
   @IsOptional()
   @IsNumber()
-  categoryId?: number;
+  categoryIds?: number[];
 
   @IsOptional()
   @IsBoolean()

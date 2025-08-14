@@ -22,6 +22,7 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { Roles } from 'src/common/decorators/user-role.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
+import { IPagination } from 'src/common/interfaces/app.interface';
 
 @Controller('items')
 export class ItemsController {
@@ -45,6 +46,20 @@ export class ItemsController {
   async findAll(@Query() filters: FilterItemDto) {
     try {
       return await this.service.findAll(filters);
+    } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to search items',
+      });
+    }
+  }
+  @Public('findAllItemsListWithPagination')
+  @Post('/list')
+  async getAllItems(@Body() paginationObject: IPagination) {
+    try {
+      return await this.service.getAllItemsService(paginationObject);
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
       if (error instanceof NotFoundException) throw error;

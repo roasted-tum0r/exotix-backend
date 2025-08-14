@@ -22,22 +22,21 @@ export class ItemCategoriesService {
   ) {
     try {
       const payload = await this.itemCategoriesRepo.addCategory(data, user.id);
-      const newPayload = Array.isArray(payload)
-        ? payload.map((r) => ({
-            ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
-          }))
-        : {
-            ...payload,
-            createdAt: payload.createdAt.toISOString(),
-            updatedAt: payload.updatedAt.toISOString(),
-          };
       return {
         statusCode: HttpStatus.CREATED,
         error: false,
         message: 'Categories were created',
-        data: newPayload,
+        data: Array.isArray(payload)
+          ? payload.map((r) => ({
+              ...r,
+              createdAt: r.createdAt.toISOString(),
+              updatedAt: r.updatedAt.toISOString(),
+            }))
+          : {
+              ...payload,
+              createdAt: payload.createdAt.toISOString(),
+              updatedAt: payload.updatedAt.toISOString(),
+            },
       };
     } catch (error) {
       throw new BadRequestException({

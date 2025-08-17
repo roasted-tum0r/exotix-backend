@@ -15,7 +15,10 @@ export class EncryptIdInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => {
-         AppLogger.log('[EncryptIdInterceptor] 🔐 Interceptor Hit, Data:', JSON.stringify(data));
+        AppLogger.log(
+          '[EncryptIdInterceptor] 🔐 Interceptor Hit, Data:',
+          JSON.stringify(data),
+        );
         // Encrypt `id` if present
         if (Array.isArray(data)) {
           return data.map((item) => this.encrypt(item));
@@ -27,26 +30,30 @@ export class EncryptIdInterceptor implements NestInterceptor {
   }
 
   private encrypt(obj: any): any {
-  if (Array.isArray(obj)) {
-    return obj.map(item => this.encrypt(item));
-  }
-
-  if (obj && typeof obj === 'object') {
-    const encrypted: any = {};
-    for (const key in obj) {
-      const value = obj[key];
-
-      if (typeof value === 'object') {
-        encrypted[key] = this.encrypt(value);
-      } else if (key.toLowerCase().endsWith('id') && typeof value === 'number') {
-        encrypted[key] = encryptId(value);
-      } else {
-        encrypted[key] = value;
-      }
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.encrypt(item));
     }
-    return encrypted;
-  }
 
-  return obj;
-}
+    if (obj && typeof obj === 'object') {
+      const encrypted: any = {};
+      for (const key in obj) {
+        const value = obj[key];
+
+        if (typeof value === 'object') {
+          encrypted[key] = this.encrypt(value);
+        } else if (
+          key.toLowerCase().endsWith('id') ||
+          (key.toLowerCase().endsWith('by') &&
+            (typeof value === 'number' || typeof value === 'string'))
+        ) {
+          encrypted[key] = encryptId(+value);
+        } else {
+          encrypted[key] = value;
+        }
+      }
+      return encrypted;
+    }
+
+    return obj;
+  }
 }

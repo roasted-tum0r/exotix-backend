@@ -10,8 +10,8 @@ export class FilterItemDto {
   categoryIds?: number[];
 
   @IsOptional()
-  @IsBoolean()
-  isAvailable?: boolean;
+  @IsString()
+  isAvailable?: 'true'|'false';
 
   @IsOptional()
   @Min(0)

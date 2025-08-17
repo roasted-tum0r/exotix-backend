@@ -29,13 +29,9 @@ export class ItemCategoriesService {
         data: Array.isArray(payload)
           ? payload.map((r) => ({
               ...r,
-              createdAt: r.createdAt.toISOString(),
-              updatedAt: r.updatedAt.toISOString(),
             }))
           : {
               ...payload,
-              createdAt: payload.createdAt.toISOString(),
-              updatedAt: payload.updatedAt.toISOString(),
             },
       };
     } catch (error) {
@@ -71,8 +67,6 @@ export class ItemCategoriesService {
           ...payload,
           results: payload.results.map((r) => ({
             ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
           })),
         },
       };
@@ -87,8 +81,13 @@ export class ItemCategoriesService {
   // ✅ Get all categories
   async getAllCategories(paginatinObject: IPagination) {
     try {
-      const payload =
-        await this.itemCategoriesRepo.getAllCategories(paginatinObject);
+      const payload = await this.itemCategoriesRepo.getAllCategories({
+        ...paginatinObject,
+        page: paginatinObject.page ?? 1,
+        limit: paginatinObject.limit ?? 100,
+        isAsc: paginatinObject.isAsc ?? true,
+        sortBy: paginatinObject.sortBy ?? '',
+      });
       return {
         statusCode: HttpStatus.OK,
         error: false,
@@ -97,8 +96,6 @@ export class ItemCategoriesService {
           ...payload,
           results: payload.results.map((r) => ({
             ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
           })),
         },
       };
@@ -125,8 +122,6 @@ export class ItemCategoriesService {
           message: `Category: ${updatedRecord.name} was updated.`,
           data: {
             ...updatedRecord,
-            createdAt: updatedRecord.createdAt.toISOString(),
-            updatedAt: updatedRecord.updatedAt.toISOString(),
           },
         };
       } else
@@ -161,8 +156,6 @@ export class ItemCategoriesService {
         message: `Category: ${category.name} fetched.`,
         data: {
           ...category,
-          createdAt: category.createdAt.toISOString(),
-          updatedAt: category.updatedAt.toISOString(),
         },
       };
     } catch (error) {
@@ -192,8 +185,6 @@ export class ItemCategoriesService {
         message: `Category: ${categoryDeleted.name} was deleted.`,
         data: {
           ...categoryDeleted,
-          createdAt: categoryDeleted.createdAt.toISOString(),
-          updatedAt: categoryDeleted.updatedAt.toISOString(),
         },
       };
     } catch (error) {

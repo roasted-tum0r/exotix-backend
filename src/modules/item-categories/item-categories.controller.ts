@@ -76,12 +76,16 @@ export class ItemCategoriesController {
     }
   }
   @Public('findallcategories')
-  @Post()
-  async findAll(@Body() paginationObject: IPagination) {
+  @Post('/findall')
+  async findAll(
+    @Body() paginationObject: Omit<IPagination, 'isAsc'>,
+    @Body('isAsc') isAsc: string,
+  ) {
     try {
-      return await this.itemCategoriesService.getAllCategories(
-        paginationObject,
-      );
+      return await this.itemCategoriesService.getAllCategories({
+        ...paginationObject,
+        isAsc: isAsc === 'true',
+      });
     } catch (error) {
       AppLogger.error('Failed to fetch categories', error.stack);
       throw new InternalServerErrorException({
@@ -127,7 +131,7 @@ export class ItemCategoriesController {
   }
   @Public('searchCategory')
   @Post('/search')
-  async search(@Body() searchObject: ISearchObject|IPagination) {
+  async search(@Body() searchObject: ISearchObject | IPagination) {
     try {
       return this.itemCategoriesService.searchCategories(searchObject);
     } catch (error) {

@@ -13,6 +13,7 @@ import { PingModule } from './modules/ping/ping.module';
 import { ItemsModule } from './modules/items/items.module';
 import { ItemCategoriesModule } from './modules/item-categories/item-categories.module';
 import { RolesGuard } from './auth/guards/role-auth.guard';
+import { DateToISOStringInterceptor } from './common/intercptors/date-transformer-interceptor';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { RolesGuard } from './auth/guards/role-auth.guard';
   providers: [
     AppService,
     EncryptIdInterceptor,
+    DateToISOStringInterceptor,
     {
       provide: APP_GUARD,
       useClass: GlobalAuthGuard,

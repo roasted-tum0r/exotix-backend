@@ -9,6 +9,7 @@ import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { AppLogger } from 'src/common/utils/app.logger';
 @Injectable()
 export class ItemCategoryRepo {
   constructor(private readonly prismaService: PrismaService) {}
@@ -141,7 +142,7 @@ export class ItemCategoryRepo {
             isActive: true,
           },
           orderBy: {
-            [`${paginatinObject.sortBy}`]: paginatinObject.isAsc
+            [`${paginatinObject.sortBy || 'createdAt'}`]: paginatinObject.isAsc
               ? 'asc'
               : 'desc',
           },
@@ -169,6 +170,7 @@ export class ItemCategoryRepo {
         results: categories,
       };
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,

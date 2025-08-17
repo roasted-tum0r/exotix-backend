@@ -29,9 +29,13 @@ export class ItemsController {
   constructor(private readonly service: ItemsService) {}
   @Roles('admin')
   @Post('/create')
-  async create(@Body() dto: CreateItemDto, @CurrentUser() user: User) {
+  async create(
+    @Body() dto: Omit<CreateItemDto, 'categoryId'>,
+    @Body('categoryId', DecryptIdPipe) categoryId: number,
+    @CurrentUser() user: User,
+  ) {
     try {
-      return await this.service.create(dto, user);
+      return await this.service.create({ ...dto, categoryId }, user);
     } catch (error) {
       AppLogger.error(`Failed create item`, error.stack);
       if (error instanceof NotFoundException) throw error;
@@ -42,10 +46,14 @@ export class ItemsController {
     }
   }
   @Public('findAllItemsWithFiters')
-  @Get('/search')
-  async findAll(@Query() filters: FilterItemDto) {
+  @Post('/search')
+  async findAll(
+    // @Body() filters: FilterItemDto
+    @Body() filters: Omit<FilterItemDto, 'categoryIds'>,
+    @Body('categoryIds', DecryptIdPipe) categoryIds: number[],
+  ) {
     try {
-      return await this.service.findAll(filters);
+      return await this.service.findAll({ ...filters, categoryIds });
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
       if (error instanceof NotFoundException) throw error;

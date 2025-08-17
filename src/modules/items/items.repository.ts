@@ -5,6 +5,7 @@ import { FilterItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
 export class ItemsRepository {
@@ -14,6 +15,7 @@ export class ItemsRepository {
     try {
       return this.prisma.item.create({ data });
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
@@ -24,27 +26,28 @@ export class ItemsRepository {
   async findAll(filters: FilterItemDto) {
     try {
       const { search, categoryIds, isAvailable, minPrice, maxPrice } = filters;
-
-      return this.prisma.item.findMany({
+      return await this.prisma.item.findMany({
         where: {
           ...(search && {
             OR: [
               {
                 name: {
-                  contains: search,
-                  mode: 'insensitive',
+                  contains: search.toLowerCase(),
+                  // mode: 'insensitive',
                 } as Prisma.StringFilter<'Item'>,
               },
               {
                 description: {
-                  contains: search,
-                  mode: 'insensitive',
+                  contains: search.toLowerCase(),
+                  // mode: 'insensitive',
                 } as Prisma.StringFilter<'Item'>,
               },
             ],
           }),
           ...(categoryIds?.length && { categoryId: { in: categoryIds } }),
-          ...(isAvailable !== undefined && { isAvailable }),
+          ...(isAvailable !== undefined && {
+            isAvailable: isAvailable === 'true',
+          }),
           ...(minPrice !== undefined || maxPrice !== undefined
             ? { price: { gte: minPrice ?? 0, lte: maxPrice ?? undefined } }
             : {}),
@@ -57,7 +60,14 @@ export class ItemsRepository {
           description: true,
           createdAt: true,
           updatedAt: true,
-          category: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              image: true,
+            },
+          },
           images: true,
           categoryId: true,
           discountPercentage: true,
@@ -71,6 +81,7 @@ export class ItemsRepository {
         },
       });
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
@@ -125,6 +136,7 @@ export class ItemsRepository {
         results: categories,
       };
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
@@ -157,6 +169,7 @@ export class ItemsRepository {
         },
       });
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
@@ -189,6 +202,7 @@ export class ItemsRepository {
         },
       });
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
@@ -221,6 +235,7 @@ export class ItemsRepository {
         },
       });
     } catch (error) {
+      AppLogger.error(error);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,

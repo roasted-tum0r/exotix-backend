@@ -31,14 +31,10 @@ export class ItemsService {
           // Array.isArray(payload)
           //   ? payload.map((r) => ({
           //       ...r,
-          //       createdAt: r.createdAt.toISOString(),
-          //       updatedAt: r.updatedAt.toISOString(),
           //     }))
           //   :
           {
             ...payload,
-            createdAt: payload.createdAt.toISOString(),
-            updatedAt: payload.updatedAt.toISOString(),
           },
       };
     } catch (error) {
@@ -63,14 +59,10 @@ export class ItemsService {
           //   ?
           payload.map((r) => ({
             ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
           })),
         //   :
         // {
         //   ...payload,
-        //   createdAt: payload.createdAt.toISOString(),
-        //   updatedAt: payload.updatedAt.toISOString(),
         // },
       };
     } catch (error) {
@@ -93,8 +85,6 @@ export class ItemsService {
           ...payload,
           results: payload.results.map((r) => ({
             ...r,
-            createdAt: r.createdAt.toISOString(),
-            updatedAt: r.updatedAt.toISOString(),
           })),
         },
       };
@@ -123,8 +113,6 @@ export class ItemsService {
         message: 'Items details were fetched',
         data: {
           ...payload,
-          createdAt: payload.createdAt.toISOString(),
-          updatedAt: payload.updatedAt.toISOString(),
         },
       };
     } catch (error) {
@@ -149,8 +137,6 @@ export class ItemsService {
         message: 'Item was updated',
         data: {
           ...payload,
-          createdAt: payload.createdAt.toISOString(),
-          updatedAt: payload.updatedAt.toISOString(),
         },
       };
     } catch (error) {
@@ -172,8 +158,6 @@ export class ItemsService {
         message: 'Item was deactivted',
         data: {
           ...payload,
-          createdAt: payload.createdAt.toISOString(),
-          updatedAt: payload.updatedAt.toISOString(),
         },
       };
     } catch (error) {

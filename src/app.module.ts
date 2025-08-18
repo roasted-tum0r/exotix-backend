@@ -14,6 +14,8 @@ import { ItemsModule } from './modules/items/items.module';
 import { ItemCategoriesModule } from './modules/item-categories/item-categories.module';
 import { RolesGuard } from './auth/guards/role-auth.guard';
 import { DateToISOStringInterceptor } from './common/intercptors/date-transformer-interceptor';
+import { CartModule } from './modules/cart/cart.module';
+import { CartItemsModule } from './modules/cart-items/cart-items.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { DateToISOStringInterceptor } from './common/intercptors/date-transforme
     PingModule,
     ItemsModule,
     ItemCategoriesModule,
+    CartModule,
+    CartItemsModule,
   ],
   controllers: [AppController],
   providers: [

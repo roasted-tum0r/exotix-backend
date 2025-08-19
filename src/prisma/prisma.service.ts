@@ -14,12 +14,8 @@ export class PrismaService
 {
   constructor() {
     super({
-      log: [
-        { emit: 'event', level: 'query' } as Prisma.LogDefinition,
-        { emit: 'event', level: 'error' } as Prisma.LogDefinition,
-        { emit: 'event', level: 'warn' } as Prisma.LogDefinition,
-        { emit: 'event', level: 'info' } as Prisma.LogDefinition,
-      ],
+      log: ['query', 'info', 'warn', 'error'],
+      errorFormat: 'pretty',
     });
 
     // this.$on('query', (e: Prisma.QueryEvent) => {

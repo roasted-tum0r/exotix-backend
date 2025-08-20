@@ -39,7 +39,7 @@ export class CartController {
     }
   }
 
-  @Get('/cart')
+  @Get('')
   async getCart(@CurrentUser() user: User) {
     try {
       return await this.cartService.getCartService(user);

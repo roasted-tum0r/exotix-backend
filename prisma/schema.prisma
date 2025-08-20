@@ -27,6 +27,10 @@ enum AddressType {
   WORK
   OTHER
 }
+enum CategoryType{
+  ITEM
+  ROLE
+}
 
 
 model User {
@@ -126,9 +130,9 @@ model Item {
 
 model CartItem {
   id        Int      @id @default(autoincrement())
-  quantity  Int      @default(1)
-  realPrice        Decimal  @db.Decimal(10, 2) // price before discount at time of adding
-  discountedPrice  Decimal  @db.Decimal(10, 2) // final price after discount
+  quantity  Int      @default(0)
+  realPrice        Decimal?  @db.Decimal(10, 2) // price before discount at time of adding
+  discountedPrice  Decimal?  @db.Decimal(10, 2) // final price after discount
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
   item      Item     @relation(fields: [itemId], references: [id])

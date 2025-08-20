@@ -8,13 +8,48 @@ export class CartRepository {
   async getCartByUserID(userId: number) {
     try {
       return this.prismaService.cart.findFirst({
-        where: { userId: userId },
-        include: {
+        where: { userId },
+        select: {
+          user: true,
           items: {
-            include: {
-              item: true,
+            select: {
+              id: true,
+              quantity: true,
+              addedAt: true,
+              item: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  image: true,
+                  price: true,
+                  discountPercentage: true,
+                  discountStart: true,
+                  discountEnd: true,
+                },
+              },
             },
           },
+          id: true,
+          createdAt: true,
+          name: true,
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async addCartRow(userId: number) {
+    try {
+      return await this.prismaService.cart.create({
+        data: {
+          name: `New cart for ${userId}`,
+          userId: userId,
         },
       });
     } catch (error) {

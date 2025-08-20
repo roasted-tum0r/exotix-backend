@@ -177,6 +177,42 @@ export class ItemsRepository {
       });
     }
   }
+  async findBulk(ids: number[]) {
+    try {
+      return this.prisma.item.findMany({
+        where: {
+          ...(ids?.length && { id: { in: ids } }),
+          isActive: true,
+        },
+        // include: { category: true, images: true, reviews: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          category: true,
+          images: true,
+          categoryId: true,
+          discountPercentage: true,
+          discountEnd: true,
+          discountStart: true,
+          reviews: true,
+          rating: true,
+          isAvailable: true,
+          price: true,
+          image: true,
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
   async update(id: number, data: UpdateItemRepoDto) {
     try {
       return this.prisma.item.update({

@@ -78,12 +78,22 @@ export class CartItemsRepository {
   }
   async getCartItemCount(cartId: number, userId: number) {
     try {
-      return this.prismaService.cartItem.count({
-        where: {
-          cartId,
-          userId,
-        },
-      });
+      const [count, items] = await this.prismaService.$transaction([
+        this.prismaService.cartItem.count({
+          where: { cartId: cartId, userId: userId },
+        }),
+        this.prismaService.cartItem.findMany({
+          where: { cartId: cartId, userId: userId },
+          select: {
+            itemId: true,
+            quantity: true,
+          },
+        }),
+      ]);
+      return {
+        count,
+        items,
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

@@ -8,6 +8,12 @@ import { CartItemsRepository } from '../cart-items/cart-items.repository';
 
 @Module({
   controllers: [CartController],
-  providers: [CartService, CartRepository, ItemsRepository, PrismaService, CartItemsRepository],
+  providers: [
+    CartService,
+    CartRepository,
+    ItemsRepository,
+    PrismaService,
+    CartItemsRepository,
+  ],
 })
 export class CartModule {}

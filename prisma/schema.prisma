@@ -141,6 +141,8 @@ model CartItem {
   cartId    Int
   addedAt   DateTime @default(now())
   @@unique([userId, itemId]) // Composite unique constraint
+  @@index([cartId])
+  @@index([userId])
 }
 
 model Order {
@@ -266,6 +268,10 @@ model Cart {
   user      User       @relation(fields: [userId], references: [id])
   userId    Int
   createdAt DateTime   @default(now())
+  isActive  Boolean    @default(true)
 
   items     CartItem[]
+  @@unique([userId, isActive])
+  @@index([id])
+  @@index([userId])
 }

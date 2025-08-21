@@ -24,11 +24,11 @@ export class CartController {
 
   @Post('/add-to-cart')
   async addToCart(
-    @Body('itemIds', DecryptIdPipe) itemIds: number[],
+    @Body('itemId', DecryptIdPipe) itemId: number,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.cartService.addToCartService({ itemIds }, user);
+      return await this.cartService.addToCartService({ itemId }, user);
     } catch (error) {
       AppLogger.error(`Failed add items to cart`, error.stack);
       if (error instanceof Error) throw error;

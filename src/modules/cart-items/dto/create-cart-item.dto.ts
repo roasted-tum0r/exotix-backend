@@ -13,7 +13,7 @@ export class CreateCartItemDto {
   @IsInt()
   @IsPositive()
   @Type(() => Number)
-  quantity: number;
+  quantity?: number;
 
   // Optional: if you ever allow setting prices directly from request
   @IsOptional()

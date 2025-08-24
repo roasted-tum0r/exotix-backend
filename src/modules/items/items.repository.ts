@@ -184,24 +184,39 @@ export class ItemsRepository {
           ...(ids?.length && { id: { in: ids } }),
           isActive: true,
         },
-        // include: { category: true, images: true, reviews: true },
         select: {
           id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          category: true,
-          images: true,
-          categoryId: true,
-          discountPercentage: true,
-          discountEnd: true,
-          discountStart: true,
-          reviews: true,
-          rating: true,
+          name:true,
           isAvailable: true,
-          price: true,
-          image: true,
+          cartItems: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async addItemDetails(itemId: number) {
+    try {
+      return await this.prisma.item.findUnique({
+        where: { id: itemId, isActive: true },
+        select: {
+          id: true,
+          isAvailable: true,
+          name:true,
+          cartItems: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
     } catch (error) {
@@ -246,29 +261,11 @@ export class ItemsRepository {
       });
     }
   }
-  async remove(id: number) {
+  async remove(ids: number[]) {
     try {
-      return this.prisma.item.update({
-        where: { id },
+      return this.prisma.item.updateMany({
+        where: {  id: { in: ids }  },
         data: { isActive: false },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          category: true,
-          images: true,
-          categoryId: true,
-          discountPercentage: true,
-          discountEnd: true,
-          discountStart: true,
-          reviews: true,
-          rating: true,
-          isAvailable: true,
-          price: true,
-          image: true,
-        },
       });
     } catch (error) {
       AppLogger.error(error);

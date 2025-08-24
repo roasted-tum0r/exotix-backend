@@ -1,4 +1,5 @@
 import {
+  HttpException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -21,19 +22,15 @@ export class CartService {
   ) {}
   async addToCartService(createCartDto: CreateCartDto, user: User) {
     try {
-      // const checkExistingCart = await this.cartRepository.getOrCreateCart(
-      //   user.id,
-      //   user.firstname,
-      // );
-      // await this.cartItemsRepository.addCartItem(
-      //   user.id,
-      //   createCartDto.itemId,
-      //   checkExistingCart.id,
-      //   {
-      //     cartId: checkExistingCart.id,
-      //     itemId: createCartDto.itemId,
-      //   },
-      // );
+      const verifyItem = await this.itemRepository.addItemDetails(
+        createCartDto.itemId,
+      );
+      if (!verifyItem || !verifyItem.isAvailable)
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: 'This item is no longer available for ordering.',
+        });
       const addToCartCalls = await this.cartRepository.getOrCreateCartOrItem(
         user.id,
         createCartDto.itemId,
@@ -44,8 +41,7 @@ export class CartService {
         error: false,
         message: 'Item added to cart',
         data: {
-          cartCount: addToCartCalls.cartCount,
-          addedItems: addToCartCalls.addedItems,
+          cartId: addToCartCalls.cart.id,
         },
       };
       // const newCartItem = await this.cartItemsRepository.addCartItem()
@@ -53,7 +49,7 @@ export class CartService {
       // Reminder: Need to create a bulk item discount update call in item module
     } catch (error) {
       AppLogger.error(`Failed add to cart`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to add to cart',
@@ -63,15 +59,52 @@ export class CartService {
 
   async getCartService(user: User) {
     try {
+      const currentCart = await this.cartRepository.getCartByUserID(user.id);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Cart fetched',
         data: await this.cartRepository.getCartByUserID(user.id),
       };
-    } catch (error) {}
+    } catch (error) {
+      AppLogger.error(`Failed get cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to get cart',
+      });
+    }
   }
-
+  async finalCartCountService({
+    cartId,
+    userId,
+  }: {
+    cartId: number;
+    userId: number;
+  }) {
+    try {
+      const finalItemCount = await this.cartRepository.getFinalCartCount(
+        userId,
+        cartId,
+      );
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Items which are added to cart',
+        data: {
+          cartCount: finalItemCount.cartItemCount,
+          addedItems: finalItemCount.addedItems,
+        },
+      };
+    } catch (error) {
+      AppLogger.error(`Failed get cart short info`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to cart short info',
+      });
+    }
+  }
   findOne(id: number) {
     return `This action returns a #${id} cart`;
   }

@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  HttpException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -20,6 +21,7 @@ import * as bcrypt from 'bcrypt';
 import { MailService } from 'src/services/mail/mailservice.service';
 import { RedisService } from 'src/services/redis/redis.service';
 import { Templates } from 'src/config/templates/template';
+import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
 export class AuthService {
@@ -75,7 +77,7 @@ export class AuthService {
       const payload = { sub: user.id, role: user.role, email: user.email };
       const accessToken = this.jwtService.sign(payload);
       await this.mailService.sendMail(
-        `Anandini's <onboarding@resend.dev>`,
+        `Anandini <info@anandini.org.in>`,
         body.email,
         `🎉 Welcome to Anandini's!`,
         Templates.welcomeEmail(user.firstname),
@@ -86,6 +88,7 @@ export class AuthService {
       });
       return requestLoginOtp;
     } catch (error) {
+      
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -127,6 +130,8 @@ export class AuthService {
       });
       return requestLoginOtp;
     } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -160,7 +165,7 @@ export class AuthService {
         OTP_EXPIRY_TIME ?? 420,
       );
       await this.mailService.sendMail(
-        `Anandini's <noreply@resend.dev>`,
+        `Anandini <info@anandini.org.in>`,
         user?.email!,
         'Your One-Time Password (OTP)',
         Templates.loginOtpEmail({
@@ -171,7 +176,7 @@ export class AuthService {
         }),
       );
       // AppLogger.log(otp, hash);
-      await this.checkRedisConnection();
+      // await this.checkRedisConnection();
       return {
         statusCode: HttpStatus.OK,
         error: false,
@@ -181,6 +186,8 @@ export class AuthService {
         },
       };
     } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -251,6 +258,8 @@ export class AuthService {
         };
       }
     } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -281,6 +290,8 @@ export class AuthService {
         data: updatedUser,
       };
     } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -311,6 +322,8 @@ export class AuthService {
         data: deactivateUser,
       };
     } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,

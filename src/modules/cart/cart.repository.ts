@@ -9,7 +9,36 @@ export class CartRepository {
     try {
       return await this.prismaService.cart.findFirst({
         where: { userId: +userId },
-        select: { id: true },
+        select: {
+          id: true,
+          createdAt: true,
+          isActive: true,
+          name: true,
+          items: {
+            select:{
+              item:{
+                select:{
+                  id:true,
+                  name:true,
+                  price:true,
+                  discountPercentage:true,
+                  discountStart:true,
+                  discountEnd:true,
+                  images:true,
+                  inventories:true,
+                  description:true,
+                  isActive:true,
+                  isAvailable:true,
+                  rating:true,
+                }
+              },
+              id:true,
+              cartId:true,
+              quantity:true,
+              addedAt:true
+            }
+          },
+        },
       });
     } catch (error) {
       AppLogger.error(error);
@@ -37,43 +66,21 @@ export class CartRepository {
       });
     }
   }
-  async addItemDetails(itemId: number) {
+
+  async getFinalCartCount(userId: number, cartId: number) {
     try {
-      return await this.prismaService.item.findUnique({
-        where: { id: itemId, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          discountPercentage: true,
-          discountStart: true,
-          discountEnd: true,
-        },
-      });
-    } catch (error) {
-      AppLogger.error(error);
-      throw new BadRequestException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: true,
-        message: `Something went wrong.`,
-      });
-    }
-  }
-  async getOrCreateCart(userId: number, userName: string) {
-    try {
-      return await this.prismaService.cart.upsert({
-        where: {
-          userId_isActive: {
-            userId,
-            isActive: true,
+      return await this.prismaService.$transaction(async (tx) => {
+        const cartItemCount = await tx.cartItem.count({
+          where: { cartId: cartId, userId },
+        });
+        const addedItems = await tx.cartItem.findMany({
+          where: { cartId: cartId, userId: userId },
+          select: {
+            itemId: true,
+            quantity: true,
           },
-        }, // must be unique in schema!
-        update: {}, // do nothing if already exists
-        create: {
-          name: `New cart for ${userName}`,
-          userId,
-        },
-        select: { id: true },
+        });
+        return { cartItemCount, addedItems };
       });
     } catch (error) {
       AppLogger.error(error);
@@ -128,17 +135,17 @@ export class CartRepository {
           },
         });
 
-        const cartCount = await tx.cartItem.count({
-          where: { cartId: cart.id, userId },
-        });
-        const addedItems = await tx.cartItem.findMany({
-          where: { cartId: cart.id, userId: userId },
-          select: {
-            itemId: true,
-            quantity: true,
-          },
-        });
-        return { cart, cartItem, cartCount, addedItems };
+        // const cartCount = await tx.cartItem.count({
+        //   where: { cartId: cart.id, userId },
+        // });
+        // const addedItems = await tx.cartItem.findMany({
+        //   where: { cartId: cart.id, userId: userId },
+        //   select: {
+        //     itemId: true,
+        //     quantity: true,
+        //   },
+        // });
+        return { cart, cartItem };
       });
     } catch (error) {
       AppLogger.error(error);

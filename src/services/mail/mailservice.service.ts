@@ -22,7 +22,7 @@ export class MailService {
     html: string,
   ): Promise<void> {
     try {
-      console.log(`📧 Sending mail to ${to}`);
+      console.log(`📧 Sending mail to ${to}, from ${from}`);
       const result = await this.resend.emails.send({
         from,
         to,

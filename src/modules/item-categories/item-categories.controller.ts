@@ -11,6 +11,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { ItemCategoriesService } from './item-categories.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
@@ -68,7 +69,7 @@ export class ItemCategoriesController {
       return result;
     } catch (error) {
       AppLogger.error(`Failed to update category with id ${id}`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Failed to update category',
@@ -108,7 +109,7 @@ export class ItemCategoriesController {
       return result;
     } catch (error) {
       AppLogger.error(`Failed to fetch category with id ${id}`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to fetch category',
@@ -122,7 +123,7 @@ export class ItemCategoriesController {
       return await this.itemCategoriesService.deleteCategory(+id);
     } catch (error) {
       AppLogger.error(`Failed to delete category with id ${id}`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to delete category',
@@ -136,7 +137,7 @@ export class ItemCategoriesController {
       return this.itemCategoriesService.searchCategories(searchObject);
     } catch (error) {
       AppLogger.error(`Failed search`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to delete category',

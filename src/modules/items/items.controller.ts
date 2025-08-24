@@ -11,6 +11,7 @@ import {
   HttpStatus,
   InternalServerErrorException,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -38,7 +39,7 @@ export class ItemsController {
       return await this.service.create({ ...dto, categoryId }, user);
     } catch (error) {
       AppLogger.error(`Failed create item`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to create item',
@@ -56,7 +57,7 @@ export class ItemsController {
       return await this.service.findAll({ ...filters, categoryIds });
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to search items',
@@ -70,7 +71,7 @@ export class ItemsController {
       return await this.service.getAllItemsService(paginationObject);
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to search items',
@@ -84,7 +85,7 @@ export class ItemsController {
       return await this.service.findOne(+id);
     } catch (error) {
       AppLogger.error(`Failed fetch item details`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to fetch item details',
@@ -102,21 +103,21 @@ export class ItemsController {
       return await this.service.update(+id, dto, user);
     } catch (error) {
       AppLogger.error(`Failed update item details`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to update item details',
       });
     }
   }
-
-  @Delete('/delete/:id')
-  async remove(@Param('id', DecryptIdPipe) id: number) {
+  @Roles('admin')
+  @Post('/delete')
+  async remove(@Body('id', DecryptIdPipe) id: number) {
     try {
-      return await this.service.remove(+id);
+      return await this.service.remove(id);
     } catch (error) {
       AppLogger.error(`Failed delete item`, error.stack);
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to delete item',

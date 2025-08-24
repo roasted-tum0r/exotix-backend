@@ -46,12 +46,7 @@ export class CartItemsRepository {
       });
     }
   }
-  async editCartItem(
-    userId: number,
-    itemId: number,
-    cartId: number,
-    data: UpdateCartItemDto,
-  ) {
+  async editCartItem(userId: number, itemId: number, data: UpdateCartItemDto) {
     try {
       return await this.prismaService.cartItem.update({
         where: {
@@ -60,11 +55,20 @@ export class CartItemsRepository {
             userId,
             itemId,
           },
+          cartId: data.cartId,
         },
         data: {
-          quantity: { increment: 1 },
+          quantity: {
+            [data.updateType]: data.quantity! > 0 ? data.quantity! : 1,
+          },
           realPrice: data.realPrice ?? 0,
           discountedPrice: data.discountedPrice ?? 0,
+        },
+        select: {
+          id: true,
+          itemId: true,
+          quantity: true,
+          cartId: true,
         },
       });
     } catch (error) {
@@ -94,6 +98,33 @@ export class CartItemsRepository {
         count,
         items,
       };
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async deleteCartItem(userId: number, itemId: number, cartId: number) {
+    try {
+      return await this.prismaService.cartItem.delete({
+        where: {
+          // composite unique constraint lets you identify the row
+          userId_itemId: {
+            userId,
+            itemId,
+          },
+          cartId: cartId,
+        },
+        select: {
+          id: true,
+          itemId: true,
+          quantity: true,
+          cartId: true,
+        },
+      });
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

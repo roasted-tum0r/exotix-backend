@@ -1,7 +1,23 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+  Query,
+} from '@nestjs/common';
 import { CartItemsService } from './cart-items.service';
 import { CreateCartItemDto } from './dto/create-cart-item.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { User } from '@prisma/client';
+import { AppLogger } from 'src/common/utils/app.logger';
 
 @Controller('cart-items')
 export class CartItemsController {
@@ -22,13 +38,39 @@ export class CartItemsController {
     return this.cartItemsService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCartItemDto: UpdateCartItemDto) {
-    return this.cartItemsService.update(+id, updateCartItemDto);
+  @Patch('/update')
+  async update(
+    @Query('itemId', DecryptIdPipe) itemId: number,
+    @Body() updateCartItemDto: UpdateCartItemDto,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.cartItemsService.update(+itemId, updateCartItemDto, user);
+    } catch (error) {
+      AppLogger.error(`Failed edit items of cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed edit items of cart',
+      });
+    }
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.cartItemsService.remove(+id);
+  @Delete('/delete')
+  async remove(
+    @Query('itemId', DecryptIdPipe) itemId: number,
+    @Body('cartId', DecryptIdPipe) cartId: number,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.cartItemsService.remove(+itemId, cartId, user);
+    } catch (error) {
+      AppLogger.error(`Failed edit items of cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed edit items of cart',
+      });
+    }
   }
 }

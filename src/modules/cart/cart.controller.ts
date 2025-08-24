@@ -9,6 +9,8 @@ import {
   HttpStatus,
   InternalServerErrorException,
   NotFoundException,
+  Query,
+  HttpException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartDto } from './dto/create-cart.dto';
@@ -31,28 +33,45 @@ export class CartController {
       return await this.cartService.addToCartService({ itemId }, user);
     } catch (error) {
       AppLogger.error(`Failed add items to cart`, error.stack);
-      if (error instanceof Error) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed add items to cart',
       });
     }
   }
-
   @Get('')
   async getCart(@CurrentUser() user: User) {
     try {
       return await this.cartService.getCartService(user);
     } catch (error) {
       AppLogger.error(`Failed to get cart`, error.stack);
-      if (error instanceof Error) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to get cart',
       });
     }
   }
-
+  @Get('/cart-info')
+  async getCartShortInfo(
+    @Query('cartId', DecryptIdPipe) cartId: number,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.cartService.finalCartCountService({
+        cartId,
+        userId: user.id,
+      });
+    } catch (error) {
+      AppLogger.error(`Failed fetch data of cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed fetch data of cart',
+      });
+    }
+  }
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.cartService.findOne(+id);

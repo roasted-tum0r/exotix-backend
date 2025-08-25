@@ -7,7 +7,7 @@ export class FilterItemDto {
 
   @IsOptional()
   @IsNumber()
-  categoryIds?: number[];
+  categoryIds?: string[];
 
   @IsOptional()
   @IsString()

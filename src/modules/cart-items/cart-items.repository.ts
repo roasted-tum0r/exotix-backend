@@ -8,9 +8,9 @@ import { AppLogger } from 'src/common/utils/app.logger';
 export class CartItemsRepository {
   constructor(private readonly prismaService: PrismaService) {}
   async addCartItem(
-    userId: number,
-    itemId: number,
-    cartId: number,
+    userId: string,
+    itemId: string,
+    cartId: string,
     data: CreateCartItemDto,
   ) {
     try {
@@ -23,15 +23,9 @@ export class CartItemsRepository {
         },
         update: {
           quantity: { increment: 1 },
-          realPrice: data.realPrice ? Number(data.realPrice) : undefined,
-          discountedPrice: data.discountedPrice
-            ? Number(data.discountedPrice)
-            : undefined,
         },
         create: {
           quantity: 1,
-          realPrice: data.realPrice ?? 0, // you could fetch this from Item table
-          discountedPrice: data.discountedPrice ?? data.realPrice ?? 0,
           userId,
           cartId,
           itemId,
@@ -46,7 +40,7 @@ export class CartItemsRepository {
       });
     }
   }
-  async editCartItem(userId: number, itemId: number, data: UpdateCartItemDto) {
+  async editCartItem(userId: string, itemId: string, data: UpdateCartItemDto) {
     try {
       return await this.prismaService.cartItem.update({
         where: {
@@ -61,8 +55,6 @@ export class CartItemsRepository {
           quantity: {
             [data.updateType]: data.quantity! > 0 ? data.quantity! : 1,
           },
-          realPrice: data.realPrice ?? 0,
-          discountedPrice: data.discountedPrice ?? 0,
         },
         select: {
           id: true,
@@ -80,7 +72,7 @@ export class CartItemsRepository {
       });
     }
   }
-  async getCartItemCount(cartId: number, userId: number) {
+  async getCartItemCount(cartId: string, userId: string) {
     try {
       const [count, items] = await this.prismaService.$transaction([
         this.prismaService.cartItem.count({
@@ -107,7 +99,7 @@ export class CartItemsRepository {
       });
     }
   }
-  async deleteCartItem(userId: number, itemId: number, cartId: number) {
+  async deleteCartItem(userId: string, itemId: string, cartId: string) {
     try {
       return await this.prismaService.cartItem.delete({
         where: {

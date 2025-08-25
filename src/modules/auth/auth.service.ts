@@ -68,7 +68,7 @@ export class AuthService {
         password: passHash,
       });
       if (registrationPurpose != RegistrationAs.CUSTOMER) {
-        await this.userRepository.createNewEmployee(user.id, 1, {
+        await this.userRepository.createNewEmployee(user.id, '40e926c6-81df-11f0-8d8c-06dbf3b5cc53', {
           companyEmail: ``,
           isActive: true,
           position: `${registrationPurpose}`,
@@ -268,7 +268,7 @@ export class AuthService {
     }
   }
   async updateUserInfo(
-    id: number,
+    id: string,
     createAuthUserDto: UpdateAuthDto,
     user: User,
   ) {
@@ -300,7 +300,7 @@ export class AuthService {
     }
   }
   async deactivateUser(
-    id: number,
+    id: string,
     // createAuthUserDto: UpdateAuthDto,
     user: User,
   ) {

@@ -5,7 +5,7 @@ import { CreateAuthUserDto } from './dto/create-auth.dto';
 @Injectable()
 export class UserRepository {
   constructor(private prisma: PrismaService) {}
-  async findByUserId(userId: number) {
+  async findByUserId(userId: string) {
     try {
       return await this.prisma.user.findUnique({
         where: { id: userId, isActive: true },
@@ -56,8 +56,8 @@ export class UserRepository {
     }
   }
   async createNewEmployee(
-    userId: number,
-    branchId: number,
+    userId: string,
+    branchId: string,
     employeeData: Omit<Prisma.EmployeeCreateInput, 'user' | 'branch'>,
   ) {
     try {
@@ -76,7 +76,7 @@ export class UserRepository {
       });
     }
   }
-  async updateUserVerified(userId: number) {
+  async updateUserVerified(userId: string) {
     try {
       return await this.prisma.user.update({
         where: { id: userId },
@@ -91,7 +91,7 @@ export class UserRepository {
     }
   }
   async updateUserById(
-    id: number,
+    id: string,
     updateData: Partial<Prisma.UserUpdateInput>,
   ) {
     try {
@@ -116,7 +116,7 @@ export class UserRepository {
     }
   }
   async deactivateUser(
-    id: number,
+    id: string,
     // updateData: Partial<Prisma.UserUpdateInput>,
   ) {
     try {

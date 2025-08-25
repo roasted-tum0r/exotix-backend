@@ -32,7 +32,7 @@ export class ItemsController {
   @Post('/create')
   async create(
     @Body() dto: Omit<CreateItemDto, 'categoryId'>,
-    @Body('categoryId', DecryptIdPipe) categoryId: number,
+    @Body('categoryId' ) categoryId: string,
     @CurrentUser() user: User,
   ) {
     try {
@@ -51,7 +51,7 @@ export class ItemsController {
   async findAll(
     // @Body() filters: FilterItemDto
     @Body() filters: Omit<FilterItemDto, 'categoryIds'>,
-    @Body('categoryIds', DecryptIdPipe) categoryIds: number[],
+    @Body('categoryIds' ) categoryIds: string[],
   ) {
     try {
       return await this.service.findAll({ ...filters, categoryIds });
@@ -80,9 +80,9 @@ export class ItemsController {
   }
   @Public('itemDetails')
   @Get('/details/:id')
-  async findOne(@Param('id', DecryptIdPipe) id: number) {
+  async findOne(@Param('id' ) id: string) {
     try {
-      return await this.service.findOne(+id);
+      return await this.service.findOne(id);
     } catch (error) {
       AppLogger.error(`Failed fetch item details`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -95,12 +95,12 @@ export class ItemsController {
   @Roles('admin')
   @Patch('/update/:id')
   async update(
-    @Param('id', DecryptIdPipe) id: number,
+    @Param('id' ) id: string,
     @Body() dto: UpdateItemDto,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.service.update(+id, dto, user);
+      return await this.service.update(id, dto, user);
     } catch (error) {
       AppLogger.error(`Failed update item details`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -112,7 +112,7 @@ export class ItemsController {
   }
   @Roles('admin')
   @Post('/delete')
-  async remove(@Body('id', DecryptIdPipe) id: number) {
+  async remove(@Body('id' ) id: string) {
     try {
       return await this.service.remove(id);
     } catch (error) {

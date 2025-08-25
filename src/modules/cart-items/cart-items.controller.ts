@@ -40,12 +40,12 @@ export class CartItemsController {
 
   @Patch('/update')
   async update(
-    @Query('itemId', DecryptIdPipe) itemId: number,
+    @Query('itemId' ) itemId: string,
     @Body() updateCartItemDto: UpdateCartItemDto,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.cartItemsService.update(+itemId, updateCartItemDto, user);
+      return await this.cartItemsService.update(itemId, updateCartItemDto, user);
     } catch (error) {
       AppLogger.error(`Failed edit items of cart`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -58,12 +58,12 @@ export class CartItemsController {
 
   @Delete('/delete')
   async remove(
-    @Query('itemId', DecryptIdPipe) itemId: number,
-    @Body('cartId', DecryptIdPipe) cartId: number,
+    @Query('itemId' ) itemId: string,
+    @Body('cartId' ) cartId: string,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.cartItemsService.remove(+itemId, cartId, user);
+      return await this.cartItemsService.remove(itemId, cartId, user);
     } catch (error) {
       AppLogger.error(`Failed edit items of cart`, error.stack);
       if (error instanceof HttpException) throw error;

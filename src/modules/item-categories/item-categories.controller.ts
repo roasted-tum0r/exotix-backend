@@ -52,12 +52,12 @@ export class ItemCategoriesController {
   @Roles('admin')
   @Patch('/update/:id')
   async update(
-    @Param('id', DecryptIdPipe) id: number,
+    @Param('id' ) id: string,
     @Body() updateItemCategoryDto: UpdateItemCategoryDto,
   ) {
     try {
       const result = await this.itemCategoriesService.updateCategory(
-        +id,
+        id,
         updateItemCategoryDto,
       );
       if (!result) {
@@ -97,9 +97,9 @@ export class ItemCategoriesController {
   }
   @Public('findOnecategory')
   @Get('/getone/:id')
-  async findOne(@Param('id', DecryptIdPipe) id: number) {
+  async findOne(@Param('id' ) id: string) {
     try {
-      const result = await this.itemCategoriesService.getCategoryById(+id);
+      const result = await this.itemCategoriesService.getCategoryById(id);
       if (!result) {
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
@@ -118,9 +118,9 @@ export class ItemCategoriesController {
   }
   @Roles('admin')
   @Delete('/deactivate/:id')
-  async remove(@Param('id', DecryptIdPipe) id: number) {
+  async remove(@Param('id' ) id: string) {
     try {
-      return await this.itemCategoriesService.deleteCategory(+id);
+      return await this.itemCategoriesService.deleteCategory(id);
     } catch (error) {
       AppLogger.error(`Failed to delete category with id ${id}`, error.stack);
       if (error instanceof HttpException) throw error;

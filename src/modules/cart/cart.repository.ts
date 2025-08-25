@@ -5,10 +5,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class CartRepository {
   constructor(private readonly prismaService: PrismaService) {}
-  async getCartByUserID(userId: number) {
+  async getCartByUserID(userId: string) {
     try {
       return await this.prismaService.cart.findFirst({
-        where: { userId: +userId },
+        where: { userId: userId },
         select: {
           id: true,
           createdAt: true,
@@ -21,9 +21,6 @@ export class CartRepository {
                   id:true,
                   name:true,
                   price:true,
-                  discountPercentage:true,
-                  discountStart:true,
-                  discountEnd:true,
                   images:true,
                   inventories:true,
                   description:true,
@@ -49,7 +46,7 @@ export class CartRepository {
       });
     }
   }
-  async addCartRow(userId: number) {
+  async addCartRow(userId: string) {
     try {
       return await this.prismaService.cart.create({
         data: {
@@ -67,7 +64,7 @@ export class CartRepository {
     }
   }
 
-  async getFinalCartCount(userId: number, cartId: number) {
+  async getFinalCartCount(userId: string, cartId: string) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const cartItemCount = await tx.cartItem.count({
@@ -92,8 +89,8 @@ export class CartRepository {
     }
   }
   async getOrCreateCartOrItem(
-    userId: number,
-    itemId: number,
+    userId: string,
+    itemId: string,
     firstname: string,
   ) {
     try {
@@ -122,13 +119,9 @@ export class CartRepository {
           },
           update: {
             quantity: { increment: 1 },
-            realPrice: 0,
-            discountedPrice: 0,
           },
           create: {
             quantity: 1,
-            realPrice: 0,
-            discountedPrice: 0,
             userId,
             cartId: cart.id, // ✅ now works fine
             itemId,

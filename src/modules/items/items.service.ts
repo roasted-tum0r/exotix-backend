@@ -97,7 +97,7 @@ export class ItemsService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     try {
       const payload = await this.repo.findOne(id);
       if (!payload)
@@ -124,7 +124,7 @@ export class ItemsService {
     }
   }
 
-  async update(id: number, dto: UpdateItemDto, user: User) {
+  async update(id: string, dto: UpdateItemDto, user: User) {
     try {
       const payload = await this.repo.update(id, {
         ...dto,
@@ -148,7 +148,7 @@ export class ItemsService {
     }
   }
 
-  async remove(id: number[] | number) {
+  async remove(id: string[] | string) {
     try {
       const ids = Array.isArray(id) ? id : [id];
       const AddedItems = await this.repo.findBulk(ids);

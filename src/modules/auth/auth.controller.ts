@@ -94,12 +94,12 @@ export class AuthController {
   }
   @Patch('/update-user/:id')
   async updateUserInfo(
-    @Param('id', DecryptIdPipe) id: number,
+    @Param('id' ) id: string,
     @Body() updateAuthDto: UpdateAuthDto,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.authUserService.updateUserInfo(+id, updateAuthDto, user);
+      return await this.authUserService.updateUserInfo(id, updateAuthDto, user);
     } catch (error) {
       AppLogger.error('Error in verifyLoginOtp:', error);
       return {
@@ -112,12 +112,12 @@ export class AuthController {
   }
   @Delete('/deactivate-user/:id')
   async deactivateUser(
-    @Param('id', DecryptIdPipe) id: number,
+    @Param('id' ) id: string,
     // @Body() updateAuthDto: UpdateAuthDto,
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.authUserService.deactivateUser(+id, user);
+      return await this.authUserService.deactivateUser(id, user);
     } catch (error) {
       AppLogger.error('Error in deactivateUser:', error);
       return {

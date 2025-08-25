@@ -26,23 +26,7 @@ export class CreateItemDto {
   price: number;
 
   @IsNumber()
-  categoryId: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  discountPercentage?: number;
-
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  discountStart?: Date;
-
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate()
-  discountEnd?: Date;
+  categoryId: string;
 
   @IsOptional()
   @IsBoolean()
@@ -51,7 +35,7 @@ export class CreateItemDto {
 
 export class CreateItemRepoDto extends CreateItemDto {
   @IsOptional()
-  createdBy: number;
+  createdBy: string;
   @IsOptional()
-  updatedBy: number;
+  updatedBy: string;
 }

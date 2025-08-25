@@ -16,6 +16,7 @@ import { RolesGuard } from './auth/guards/role-auth.guard';
 import { DateToISOStringInterceptor } from './common/intercptors/date-transformer-interceptor';
 import { CartModule } from './modules/cart/cart.module';
 import { CartItemsModule } from './modules/cart-items/cart-items.module';
+import { BranchModule } from './modules/branch/branch.module';
 
 @Module({
   imports: [
@@ -41,11 +42,12 @@ import { CartItemsModule } from './modules/cart-items/cart-items.module';
     ItemCategoriesModule,
     CartModule,
     CartItemsModule,
+    BranchModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    EncryptIdInterceptor,
+    // EncryptIdInterceptor,
     DateToISOStringInterceptor,
     {
       provide: APP_GUARD,

@@ -30,7 +30,7 @@ export class CartItemsService {
     return `This action returns a #${id} cartItem`;
   }
 
-  async update(id: number, updateCartItemDto: UpdateCartItemDto, user: User) {
+  async update(id: string, updateCartItemDto: UpdateCartItemDto, user: User) {
     try {
       const verifyItem = await this.itemRepository.addItemDetails(id);
       if (!verifyItem || !verifyItem.isAvailable)
@@ -61,7 +61,7 @@ export class CartItemsService {
     }
   }
 
-  async remove(id: number, cartId: number, user: User) {
+  async remove(id: string, cartId: string, user: User) {
     try {
       return {
         statusCode: HttpStatus.CREATED,

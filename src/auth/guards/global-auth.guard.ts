@@ -48,7 +48,7 @@ export class GlobalAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      const user = await this.userRepo.findByUserId(+payload.sub);
+      const user = await this.userRepo.findByUserId(payload.sub);
 
       if (!user) throw new UnauthorizedException('User not found');
 

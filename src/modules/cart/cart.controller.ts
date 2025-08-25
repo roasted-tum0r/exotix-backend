@@ -26,7 +26,7 @@ export class CartController {
 
   @Post('/add-to-cart')
   async addToCart(
-    @Body('itemId', DecryptIdPipe) itemId: number,
+    @Body('itemId' ) itemId: string,
     @CurrentUser() user: User,
   ) {
     try {
@@ -55,7 +55,7 @@ export class CartController {
   }
   @Get('/cart-info')
   async getCartShortInfo(
-    @Query('cartId', DecryptIdPipe) cartId: number,
+    @Query('cartId' ) cartId: string,
     @CurrentUser() user: User,
   ) {
     try {

@@ -79,8 +79,8 @@ export class CartService {
     cartId,
     userId,
   }: {
-    cartId: number;
-    userId: number;
+    cartId: string;
+    userId: string;
   }) {
     try {
       const finalItemCount = await this.cartRepository.getFinalCartCount(

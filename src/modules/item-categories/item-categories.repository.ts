@@ -15,7 +15,7 @@ export class ItemCategoryRepo {
   constructor(private readonly prismaService: PrismaService) {}
   async addCategory(
     data: CreateItemCategoryDto | CreateItemCategoryDto[],
-    userId: number,
+    userId: string,
   ) {
     try {
       if (Array.isArray(data)) {
@@ -69,7 +69,7 @@ export class ItemCategoryRepo {
     }
   }
 
-  async getCategoryById(id: number) {
+  async getCategoryById(id: string) {
     try {
       return await this.prismaService.categoryMaster.findUnique({
         where: { id, isActive: true },
@@ -89,7 +89,7 @@ export class ItemCategoryRepo {
       });
     }
   }
-  async updateCategory(id: number, data: UpdateItemCategoryDto) {
+  async updateCategory(id: string, data: UpdateItemCategoryDto) {
     try {
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
@@ -110,7 +110,7 @@ export class ItemCategoryRepo {
       });
     }
   }
-  async deleteCategory(id: number) {
+  async deleteCategory(id: string) {
     try {
       await this.getCategoryById(id); // check if exists
       return await this.prismaService.categoryMaster.update({

@@ -108,7 +108,7 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Update category by ID
-  async updateCategory(id: number, data: UpdateItemCategoryDto) {
+  async updateCategory(id: string, data: UpdateItemCategoryDto) {
     try {
       const payload = await this.getCategoryById(id); // check if exists
       if (payload) {
@@ -140,7 +140,7 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Get category by ID
-  async getCategoryById(id: number) {
+  async getCategoryById(id: string) {
     try {
       const category = await this.itemCategoriesRepo.getCategoryById(id);
       if (!category) {
@@ -168,7 +168,7 @@ export class ItemCategoriesService {
   }
 
   // ✅ Delete category by ID
-  async deleteCategory(id: number) {
+  async deleteCategory(id: string) {
     try {
       const category = await this.itemCategoriesRepo.getCategoryById(id);
       if (!category) {

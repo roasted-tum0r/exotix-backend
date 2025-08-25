@@ -70,9 +70,6 @@ export class ItemsRepository {
           },
           images: true,
           categoryId: true,
-          discountPercentage: true,
-          discountEnd: true,
-          discountStart: true,
           reviews: true,
           rating: true,
           isAvailable: true,
@@ -112,9 +109,6 @@ export class ItemsRepository {
             category: true,
             images: true,
             categoryId: true,
-            discountPercentage: true,
-            discountEnd: true,
-            discountStart: true,
             reviews: true,
             rating: true,
             isAvailable: true,
@@ -144,7 +138,7 @@ export class ItemsRepository {
       });
     }
   }
-  async findOne(id: number) {
+  async findOne(id: string) {
     try {
       return this.prisma.item.findUnique({
         where: { id, isActive: true },
@@ -158,9 +152,6 @@ export class ItemsRepository {
           category: true,
           images: true,
           categoryId: true,
-          discountPercentage: true,
-          discountEnd: true,
-          discountStart: true,
           reviews: true,
           rating: true,
           isAvailable: true,
@@ -177,7 +168,7 @@ export class ItemsRepository {
       });
     }
   }
-  async findBulk(ids: number[]) {
+  async findBulk(ids: string[]) {
     try {
       return this.prisma.item.findMany({
         where: {
@@ -204,7 +195,7 @@ export class ItemsRepository {
       });
     }
   }
-  async addItemDetails(itemId: number) {
+  async addItemDetails(itemId: string) {
     try {
       return await this.prisma.item.findUnique({
         where: { id: itemId, isActive: true },
@@ -228,7 +219,7 @@ export class ItemsRepository {
       });
     }
   }
-  async update(id: number, data: UpdateItemRepoDto) {
+  async update(id: string, data: UpdateItemRepoDto) {
     try {
       return this.prisma.item.update({
         where: { id },
@@ -242,9 +233,6 @@ export class ItemsRepository {
           category: true,
           images: true,
           categoryId: true,
-          discountPercentage: true,
-          discountEnd: true,
-          discountStart: true,
           reviews: true,
           rating: true,
           isAvailable: true,
@@ -261,7 +249,7 @@ export class ItemsRepository {
       });
     }
   }
-  async remove(ids: number[]) {
+  async remove(ids: string[]) {
     try {
       return this.prisma.item.updateMany({
         where: {  id: { in: ids }  },

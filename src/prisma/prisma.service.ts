@@ -16,6 +16,15 @@ export class PrismaService
     super({
       log: ['query', 'info', 'warn', 'error'],
       errorFormat: 'pretty',
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      transactionOptions: {
+        maxWait: 10000, // wait up to 10s to get a connection from pool
+        timeout: 30000, // query timeout = 30s
+      },
     });
 
     // this.$on('query', (e: Prisma.QueryEvent) => {

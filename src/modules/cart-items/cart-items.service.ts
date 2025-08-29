@@ -30,7 +30,12 @@ export class CartItemsService {
     return `This action returns a #${id} cartItem`;
   }
 
-  async update(id: string, updateCartItemDto: UpdateCartItemDto, user: User) {
+  async update(
+    id: string,
+    updateCartItemDto: UpdateCartItemDto,
+    userId: string,
+    isGuestCart: boolean,
+  ) {
     try {
       const verifyItem = await this.itemRepository.addItemDetails(id);
       if (!verifyItem || !verifyItem.isAvailable)
@@ -45,9 +50,10 @@ export class CartItemsService {
         message: 'Item updated in cart',
         data: {
           updatedItem: await this.cartItemRepository.editCartItem(
-            user.id,
+            userId,
             id,
             updateCartItemDto,
+            isGuestCart
           ),
         },
       };
@@ -61,7 +67,7 @@ export class CartItemsService {
     }
   }
 
-  async remove(id: string, cartId: string, user: User) {
+  async remove(id: string, cartId: string, userId:string, isGuestCart:boolean) {
     try {
       return {
         statusCode: HttpStatus.CREATED,
@@ -69,9 +75,10 @@ export class CartItemsService {
         message: 'Item deleted from cart',
         data: {
           updatedItem: await this.cartItemRepository.deleteCartItem(
-            user.id,
+            userId,
             id,
             cartId,
+            isGuestCart
           ),
         },
       };

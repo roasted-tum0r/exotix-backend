@@ -147,16 +147,20 @@ model Item {
 model CartItem {
   id          String       @id @default(uuid())
   quantity  Int      @default(0)
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  guestId   String?  
   item      Item     @relation(fields: [itemId], references: [id])
   itemId    String
   cart      Cart     @relation(fields: [cartId], references: [id])
   cartId    String
   addedAt   DateTime @default(now())
   @@unique([userId, itemId]) // Composite unique constraint
+  @@unique([guestId, itemId]) // ✅ Added guest constraint
   @@index([cartId])
   @@index([userId])
+  @@index([guestId])
+  @@index([itemId])
 }
 
 model Order {
@@ -281,13 +285,16 @@ model Review {
 model Cart {
   id        String      @id @default(uuid())
   name      String     // Optional: "Bulk Order", "Gift", etc.
-  user      User       @relation(fields: [userId], references: [id])
-  userId    String
+  user      User?       @relation(fields: [userId], references: [id])
+  userId    String?
+  guestId   String?    
   createdAt DateTime   @default(now())
   isActive  Boolean    @default(true)
 
   items     CartItem[]
   @@unique([userId, isActive])
+  @@unique([guestId, isActive]) // ✅ Added guest constraint
+
   @@index([id])
   @@index([userId])
 }

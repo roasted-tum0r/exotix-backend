@@ -18,6 +18,7 @@ import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('cart-items')
 export class CartItemsController {
@@ -37,15 +38,21 @@ export class CartItemsController {
   findOne(@Param('id') id: string) {
     return this.cartItemsService.findOne(+id);
   }
-
+  @Public('updateCartItem')
   @Patch('/update')
   async update(
-    @Query('itemId' ) itemId: string,
+    @Query('itemId') itemId: string,
+    @Query('userId') userId: string,
+    @Query('isGuestCart') isGuestCart: string,
     @Body() updateCartItemDto: UpdateCartItemDto,
-    @CurrentUser() user: User,
   ) {
     try {
-      return await this.cartItemsService.update(itemId, updateCartItemDto, user);
+      return await this.cartItemsService.update(
+        itemId,
+        updateCartItemDto,
+        userId,
+        isGuestCart === 'true',
+      );
     } catch (error) {
       AppLogger.error(`Failed edit items of cart`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -55,15 +62,21 @@ export class CartItemsController {
       });
     }
   }
-
+  @Public('updateCartItem')
   @Delete('/delete')
   async remove(
-    @Query('itemId' ) itemId: string,
-    @Body('cartId' ) cartId: string,
-    @CurrentUser() user: User,
+    @Query('itemId') itemId: string,
+    @Query('userId') userId: string,
+    @Query('isGuestCart') isGuestCart: string,
+    @Body('cartId') cartId: string,
   ) {
     try {
-      return await this.cartItemsService.remove(itemId, cartId, user);
+      return await this.cartItemsService.remove(
+        itemId,
+        cartId,
+        userId,
+        isGuestCart === 'true',
+      );
     } catch (error) {
       AppLogger.error(`Failed edit items of cart`, error.stack);
       if (error instanceof HttpException) throw error;

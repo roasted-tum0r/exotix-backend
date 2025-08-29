@@ -5,6 +5,7 @@ import { CartRepository } from './cart.repository';
 import { ItemsRepository } from '../items/items.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CartItemsRepository } from '../cart-items/cart-items.repository';
+import { UserRepository } from '../auth/auth.repository';
 
 @Module({
   controllers: [CartController],
@@ -14,6 +15,7 @@ import { CartItemsRepository } from '../cart-items/cart-items.repository';
     ItemsRepository,
     PrismaService,
     CartItemsRepository,
+    UserRepository,
   ],
 })
 export class CartModule {}

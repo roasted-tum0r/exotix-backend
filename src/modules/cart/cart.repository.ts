@@ -5,35 +5,35 @@ import { PrismaService } from 'src/prisma/prisma.service';
 @Injectable()
 export class CartRepository {
   constructor(private readonly prismaService: PrismaService) {}
-  async getCartByUserID(userId: string) {
+  async getCartByUserID(userId: string, isGuestCart: boolean) {
     try {
       return await this.prismaService.cart.findFirst({
-        where: { userId: userId },
+        where: { [isGuestCart ? `guestId` : `userId`]: userId },
         select: {
           id: true,
           createdAt: true,
           isActive: true,
           name: true,
           items: {
-            select:{
-              item:{
-                select:{
-                  id:true,
-                  name:true,
-                  price:true,
-                  images:true,
-                  inventories:true,
-                  description:true,
-                  isActive:true,
-                  isAvailable:true,
-                  rating:true,
-                }
+            select: {
+              item: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  images: true,
+                  inventories: true,
+                  description: true,
+                  isActive: true,
+                  isAvailable: true,
+                  rating: true,
+                },
               },
-              id:true,
-              cartId:true,
-              quantity:true,
-              addedAt:true
-            }
+              id: true,
+              cartId: true,
+              quantity: true,
+              addedAt: true,
+            },
           },
         },
       });
@@ -63,15 +63,24 @@ export class CartRepository {
       });
     }
   }
-
-  async getFinalCartCount(userId: string, cartId: string) {
+  async getFinalCartCount(
+    userId: string,
+    cartId: string,
+    isGuestCart: boolean,
+  ) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const cartItemCount = await tx.cartItem.count({
-          where: { cartId: cartId, userId },
+          where: {
+            cartId: cartId,
+            [isGuestCart ? 'guestId' : 'userId']: userId,
+          },
         });
         const addedItems = await tx.cartItem.findMany({
-          where: { cartId: cartId, userId: userId },
+          where: {
+            cartId: cartId,
+            [isGuestCart ? 'guestId' : 'userId']: userId,
+          },
           select: {
             itemId: true,
             quantity: true,
@@ -92,7 +101,48 @@ export class CartRepository {
     userId: string,
     itemId: string,
     firstname: string,
+    isGuestCart: boolean,
   ) {
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const cart = await tx.cart.upsert({
+          where: isGuestCart
+            ? { guestId_isActive: { guestId: userId, isActive: true } }
+            : { userId_isActive: { userId: userId, isActive: true } },
+          update: {},
+          create: {
+            name: `New cart for ${firstname}`,
+            [isGuestCart ? 'guestId' : 'userId']: userId,
+          },
+          select: { id: true },
+        });
+
+        const cartItem = await tx.cartItem.upsert({
+          where: isGuestCart
+            ? { guestId_itemId: { guestId: userId, itemId } }
+            : { userId_itemId: { userId: userId, itemId } },
+          update: {
+            quantity: { increment: 1 },
+          },
+          create: {
+            quantity: 1,
+            [isGuestCart ? 'guestId' : 'userId']: userId,
+            cartId: cart.id, // ✅ now works fine
+            itemId,
+          },
+        });
+        return { cart, cartItem };
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async mergeCart(userId: string, guestUserId: string, firstName: string) {
     try {
       return await this.prismaService.$transaction(async (tx) => {
         const cart = await tx.cart.upsert({
@@ -102,42 +152,28 @@ export class CartRepository {
               isActive: true,
             },
           },
-          update: {},
+          update: {
+            userId,
+          },
           create: {
-            name: `New cart for ${firstname}`,
+            name: `New cart for ${firstName}`,
             userId,
           },
           select: { id: true },
         });
-
-        const cartItem = await tx.cartItem.upsert({
-          where: {
-            userId_itemId: {
-              userId,
-              itemId,
-            },
-          },
-          update: {
-            quantity: { increment: 1 },
-          },
-          create: {
-            quantity: 1,
-            userId,
-            cartId: cart.id, // ✅ now works fine
-            itemId,
-          },
+        const cartItem = await tx.$executeRawUnsafe(`
+        INSERT INTO CartItem (id, cartId, userId, itemId, quantity)
+        SELECT UUID(), '${cart.id}', '${userId}', g.itemId, g.quantity
+        FROM CartItem g
+        WHERE g.guestId = '${guestUserId}'
+        ON DUPLICATE KEY UPDATE CartItem.quantity = CartItem.quantity + VALUES(quantity);
+        `);
+        await tx.cartItem.deleteMany({
+          where: { guestId: guestUserId },
         });
-
-        // const cartCount = await tx.cartItem.count({
-        //   where: { cartId: cart.id, userId },
-        // });
-        // const addedItems = await tx.cartItem.findMany({
-        //   where: { cartId: cart.id, userId: userId },
-        //   select: {
-        //     itemId: true,
-        //     quantity: true,
-        //   },
-        // });
+        await tx.cart.deleteMany({
+          where: { guestId: guestUserId },
+        });
         return { cart, cartItem };
       });
     } catch (error) {

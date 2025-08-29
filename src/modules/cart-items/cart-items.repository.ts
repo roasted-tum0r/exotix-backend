@@ -40,17 +40,17 @@ export class CartItemsRepository {
       });
     }
   }
-  async editCartItem(userId: string, itemId: string, data: UpdateCartItemDto) {
+  async editCartItem(
+    userId: string,
+    itemId: string,
+    data: UpdateCartItemDto,
+    isGuestCart: boolean,
+  ) {
     try {
       return await this.prismaService.cartItem.update({
-        where: {
-          // composite unique constraint lets you identify the row
-          userId_itemId: {
-            userId,
-            itemId,
-          },
-          cartId: data.cartId,
-        },
+        where: isGuestCart
+          ? { guestId_itemId: { guestId: userId, itemId }, cartId: data.cartId }
+          : { userId_itemId: { userId: userId, itemId }, cartId: data.cartId },
         data: {
           quantity: {
             [data.updateType]: data.quantity! > 0 ? data.quantity! : 1,
@@ -99,17 +99,17 @@ export class CartItemsRepository {
       });
     }
   }
-  async deleteCartItem(userId: string, itemId: string, cartId: string) {
+  async deleteCartItem(
+    userId: string,
+    itemId: string,
+    cartId: string,
+    isGuestCart: boolean,
+  ) {
     try {
       return await this.prismaService.cartItem.delete({
-        where: {
-          // composite unique constraint lets you identify the row
-          userId_itemId: {
-            userId,
-            itemId,
-          },
-          cartId: cartId,
-        },
+        where: isGuestCart
+          ? { guestId_itemId: { guestId: userId, itemId }, cartId: cartId }
+          : { userId_itemId: { userId: userId, itemId }, cartId: cartId },
         select: {
           id: true,
           itemId: true,

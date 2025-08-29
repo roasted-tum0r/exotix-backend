@@ -13,24 +13,22 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { CreateCartDto } from './dto/create-cart.dto';
+import { CreateCartDto, GetCartDto } from './dto/create-cart.dto';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
-
+  @Public('addToCart')
   @Post('/add-to-cart')
-  async addToCart(
-    @Body('itemId' ) itemId: string,
-    @CurrentUser() user: User,
-  ) {
+  async addToCart(@Body() createCart: CreateCartDto) {
     try {
-      return await this.cartService.addToCartService({ itemId }, user);
+      return await this.cartService.addToCartService(createCart);
     } catch (error) {
       AppLogger.error(`Failed add items to cart`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -40,10 +38,21 @@ export class CartController {
       });
     }
   }
-  @Get('')
-  async getCart(@CurrentUser() user: User) {
+  @Public('getCart')
+  @Get()
+  async getCart(
+    @Query('cartId') cartId: string,
+    @Query('userId') userId: string,
+    @Query('isGuestCart') isGuestCart: string,
+  ) {
     try {
-      return await this.cartService.getCartService(user);
+      return await this.cartService.getCartService(
+        {
+          cartId,
+          userId,
+        },
+        isGuestCart === 'true',
+      );
     } catch (error) {
       AppLogger.error(`Failed to get cart`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -53,15 +62,18 @@ export class CartController {
       });
     }
   }
+  @Public('getCartShortInfo')
   @Get('/cart-info')
   async getCartShortInfo(
-    @Query('cartId' ) cartId: string,
-    @CurrentUser() user: User,
+    @Query('cartId') cartId: string,
+    @Query('userId') userId: string,
+    @Query('isGuestCart') isGuestCart: string,
   ) {
     try {
       return await this.cartService.finalCartCountService({
         cartId,
-        userId: user.id,
+        userId,
+        isGuestCart: isGuestCart === 'true',
       });
     } catch (error) {
       AppLogger.error(`Failed fetch data of cart`, error.stack);
@@ -77,13 +89,37 @@ export class CartController {
     return this.cartService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCartDto: UpdateCartDto) {
-    return this.cartService.update(+id, updateCartDto);
+  @Patch('/merge-cart')
+  async mergeCart(
+    @Query('guestUserId') guestUserId: string,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.cartService.mergeCartupdate(guestUserId, user);
+    } catch (error) {
+      AppLogger.error(`Failed fetch data of cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed fetch data of cart',
+      });
+    }
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.cartService.remove(+id);
-  }
+  // @Delete()
+  // async remove(@Query('cartId') cartId: string, @CurrentUser() user: User) {
+  //   try {
+  //     return await this.cartService.finalCartCountService({
+  //       cartId,
+  //       userId: user.id,
+  //     });
+  //   } catch (error) {
+  //     AppLogger.error(`Failed fetch data of cart`, error.stack);
+  //     if (error instanceof HttpException) throw error;
+  //     throw new InternalServerErrorException({
+  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+  //       message: 'Failed fetch data of cart',
+  //     });
+  //   }
+  // }
 }

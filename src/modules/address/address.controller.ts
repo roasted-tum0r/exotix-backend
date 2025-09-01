@@ -7,6 +7,9 @@ import {
   Param,
   Body,
   Query,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { AddressService } from './address.service';
 import { CreateAddressDto } from './dto/create-address.dto';
@@ -15,6 +18,7 @@ import { DeleteAddressDto } from './dto/delete-address.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { AppLogger } from 'src/common/utils/app.logger';
 
 @Controller('addresses')
 export class AddressController {
@@ -22,17 +26,44 @@ export class AddressController {
 
   @Post('/create')
   async create(@CurrentUser() user: User, @Body() dto: CreateAddressDto) {
-    return await this.service.create(user, dto);
+    try {
+      return await this.service.create(user, dto);
+    } catch (error) {
+      AppLogger.error(`Failed create address`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed create address',
+      });
+    }
   }
 
   @Get('/list')
   async findMany(@CurrentUser() user: User, @Query() pagination: IPagination) {
-    return await this.service.findMany(user, pagination);
+    try {
+      return await this.service.findMany(user, pagination);
+    } catch (error) {
+      AppLogger.error(`Failed address fetch`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed address fetch',
+      });
+    }
   }
 
   @Get('/get-one')
   async findById(@Query('addressId') addressId: string) {
-    return await this.service.findById(addressId);
+    try {
+      return await this.service.findById(addressId);
+    } catch (error) {
+      AppLogger.error(`Failed to get one address`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to get one address',
+      });
+    }
   }
 
   @Patch('/update')
@@ -40,11 +71,29 @@ export class AddressController {
     @Param('addressId') addressId: string,
     @Body() dto: UpdateAddressDto,
   ) {
-    return await this.service.update(addressId, dto);
+    try {
+      return await this.service.update(addressId, dto);
+    } catch (error) {
+      AppLogger.error(`Failed update address`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed update address',
+      });
+    }
   }
 
   @Delete()
   async delete(@Body() dto: DeleteAddressDto) {
-    return await this.service.delete(dto);
+    try {
+      return await this.service.delete(dto);
+    } catch (error) {
+      AppLogger.error(`Failed to delete addresses`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete addresses',
+      });
+    }
   }
 }

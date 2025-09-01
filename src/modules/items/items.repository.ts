@@ -98,8 +98,8 @@ export class ItemsRepository {
               ? 'asc'
               : 'desc',
           },
-          skip: (paginatinObject.page - 1) * paginatinObject.limit,
-          take: paginatinObject.limit,
+          skip: (+paginatinObject.page - 1) * +paginatinObject.limit,
+          take: +paginatinObject.limit,
           select: {
             id: true,
             name: true,

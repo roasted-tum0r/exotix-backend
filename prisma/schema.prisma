@@ -74,7 +74,13 @@ model User {
   categoriesUpdated CategoryMaster[] @relation("CategoryUpdater")
   ItemsCreated Item[] @relation("ItemCreator")
   ItemsUpdated Item[] @relation("ItemUpdater")
+  offersCreated OfferMaster[] @relation("OfferCreator")
+  offersUpdated OfferMaster[] @relation("OfferUpdater")
   @@unique([email, phone]) // Composite unique constraint
+  @@index([id])
+  @@index([email])
+  @@index([phone])
+  @@index([isActive])
 }
 
 model Address {
@@ -98,6 +104,17 @@ model Address {
   // Optional: orders using this address for shipping/billing
   OrdersAsShipping Order[]  @relation("ShippingAddress")
   OrdersAsBilling  Order[]  @relation("BillingAddress")
+  @@index([id])
+  @@index([userId])
+  @@index([latitude])
+  @@index([longitude])
+  @@index([line1])
+  @@index([line2])
+  @@index([city])
+  @@index([state])
+  @@index([country])
+  @@index([postalCode])
+  @@index([isDefault])
 }
 
 model CategoryMaster {
@@ -113,6 +130,10 @@ model CategoryMaster {
   user        User          @relation("CategoryCreator", fields: [createdBy], references: [id])
   updater     User          @relation("CategoryUpdater", fields: [updatedBy], references: [id])
   items       Item[]        // One-to-many
+  @@index([id])
+  @@index([isActive])
+  @@index([createdBy])
+  @@index([updatedBy])
 }
 
 model OfferMaster {
@@ -127,11 +148,22 @@ model OfferMaster {
   minPurchaseAmount Float?     // cart level condition
   minQuantity Int?             // item level condition
   applicableScope OfferScope   // ITEM or CART
+  isActive    Boolean       @default(true)
+  createdBy   String
+  createdAt   DateTime      @default(now())
+  updatedBy   String
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation("OfferCreator", fields: [createdBy], references: [id])
+  updater     User          @relation("OfferUpdater", fields: [updatedBy], references: [id])
   isStackable Boolean @default(false)
 
   // Relations
-  items       Item[]           // only relevant if scope = ITEM
-  orders      Order[]          @relation("AppliedOffers")
+  items       Item[]           
+  orders      Order[]
+  @@index([id])
+  @@index([isActive])
+  @@index([createdBy])
+  @@index([updatedBy])         
 }
 
 model Item {
@@ -159,6 +191,15 @@ model Item {
    // Relationships
   reviews     Review[]  // One-to-many
   images      Image[]   // One-to-many
+
+  @@index([id])
+  @@index([isActive])
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([categoryId])
+  @@index([offerId])
+  @@index([price])
+  @@index([rating])   
 }
 
 model CartItem {
@@ -198,6 +239,11 @@ model Order {
   billingAddressId   String?
 
   orderItems         OrderItem[]
+  @@index([id])
+  @@index([branchId])
+  @@index([totalAmount])
+  @@index([shippingAddressId])
+  @@index([billingAddressId])
 }
 
 model OrderItem {
@@ -208,6 +254,11 @@ model OrderItem {
   itemId    String
   quantity  Int     @default(1)
   price     Float   // snapshot of price at purchase
+  @@index([orderId])
+  @@index([id])
+  @@index([itemId])
+  @@index([price])
+  @@index([quantity])
 }
 
 model Branch {
@@ -239,7 +290,7 @@ model Inventory {
 }
 
 model Employee {
-  iid          String      @id @default(uuid())
+  id          String      @id @default(uuid())
   userId       String     @unique
   branchId     String
   position     String  // like 'cashier', 'manager', etc.
@@ -247,7 +298,10 @@ model Employee {
   isActive     Boolean  @default(true)
   user         User    @relation(fields: [userId], references: [id])
   branch       Branch  @relation(fields: [branchId], references: [id])
-  
+  @@index([userId])
+  @@index([id])
+  @@index([branchId])
+  @@index([isActive])
 }
 
 
@@ -314,4 +368,6 @@ model Cart {
 
   @@index([id])
   @@index([userId])
+  @@index([guestId])
+  @@index([isActive])
 }

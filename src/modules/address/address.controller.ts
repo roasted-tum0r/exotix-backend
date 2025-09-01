@@ -1,34 +1,50 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { AddressService } from './address.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
+import { DeleteAddressDto } from './dto/delete-address.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { User } from '@prisma/client';
+import { IPagination } from 'src/common/interfaces/app.interface';
 
-@Controller('address')
+@Controller('addresses')
 export class AddressController {
-  constructor(private readonly addressService: AddressService) {}
+  constructor(private readonly service: AddressService) {}
 
-  @Post()
-  create(@Body() createAddressDto: CreateAddressDto) {
-    return this.addressService.create(createAddressDto);
+  @Post('/create')
+  async create(@CurrentUser() user: User, @Body() dto: CreateAddressDto) {
+    return await this.service.create(user, dto);
   }
 
-  @Get()
-  findAll() {
-    return this.addressService.findAll();
+  @Get('/list')
+  async findMany(@CurrentUser() user: User, @Query() pagination: IPagination) {
+    return await this.service.findMany(user, pagination);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.addressService.findOne(+id);
+  @Get('/get-one')
+  async findById(@Query('addressId') addressId: string) {
+    return await this.service.findById(addressId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAddressDto: UpdateAddressDto) {
-    return this.addressService.update(+id, updateAddressDto);
+  @Patch('/update')
+  async update(
+    @Param('addressId') addressId: string,
+    @Body() dto: UpdateAddressDto,
+  ) {
+    return await this.service.update(addressId, dto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.addressService.remove(+id);
+  @Delete()
+  async delete(@Body() dto: DeleteAddressDto) {
+    return await this.service.delete(dto);
   }
 }

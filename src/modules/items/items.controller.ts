@@ -32,7 +32,7 @@ export class ItemsController {
   @Post('/create')
   async create(
     @Body() dto: Omit<CreateItemDto, 'categoryId'>,
-    @Body('categoryId' ) categoryId: string,
+    @Body('categoryId') categoryId: string,
     @CurrentUser() user: User,
   ) {
     try {
@@ -51,7 +51,7 @@ export class ItemsController {
   async findAll(
     // @Body() filters: FilterItemDto
     @Body() filters: Omit<FilterItemDto, 'categoryIds'>,
-    @Body('categoryIds' ) categoryIds: string[],
+    @Body('categoryIds') categoryIds: string[],
   ) {
     try {
       return await this.service.findAll({ ...filters, categoryIds });
@@ -65,8 +65,8 @@ export class ItemsController {
     }
   }
   @Public('findAllItemsListWithPagination')
-  @Post('/list')
-  async getAllItems(@Body() paginationObject: IPagination) {
+  @Get('/list')
+  async getAllItems(@Query() paginationObject: IPagination) {
     try {
       return await this.service.getAllItemsService(paginationObject);
     } catch (error) {
@@ -80,7 +80,7 @@ export class ItemsController {
   }
   @Public('itemDetails')
   @Get('/details/:id')
-  async findOne(@Param('id' ) id: string) {
+  async findOne(@Param('id') id: string) {
     try {
       return await this.service.findOne(id);
     } catch (error) {
@@ -95,7 +95,7 @@ export class ItemsController {
   @Roles('admin')
   @Patch('/update/:id')
   async update(
-    @Param('id' ) id: string,
+    @Param('id') id: string,
     @Body() dto: UpdateItemDto,
     @CurrentUser() user: User,
   ) {
@@ -112,7 +112,7 @@ export class ItemsController {
   }
   @Roles('admin')
   @Post('/delete')
-  async remove(@Body('id' ) id: string) {
+  async remove(@Body('id') id: string) {
     try {
       return await this.service.remove(id);
     } catch (error) {

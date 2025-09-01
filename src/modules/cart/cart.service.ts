@@ -168,7 +168,21 @@ export class CartService {
     } catch (error) {}
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} cart`;
+  async remove(id: string) {
+    try {
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Cart was deleted',
+        data: await this.cartRepository.deleteCart(id),
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to delete cart`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete cart',
+      });
+    }
   }
 }

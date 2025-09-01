@@ -185,4 +185,21 @@ export class CartRepository {
       });
     }
   }
+  async deleteCart(cartId: string) {
+    try {
+      return await this.prismaService.$transaction(async (tx) => {
+        const cartItem = await tx.cartItem.deleteMany({
+          where: { cartId: cartId },
+        });
+        return { cartItem };
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
 }

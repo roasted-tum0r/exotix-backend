@@ -105,21 +105,18 @@ export class CartController {
       });
     }
   }
-
-  // @Delete()
-  // async remove(@Query('cartId') cartId: string, @CurrentUser() user: User) {
-  //   try {
-  //     return await this.cartService.finalCartCountService({
-  //       cartId,
-  //       userId: user.id,
-  //     });
-  //   } catch (error) {
-  //     AppLogger.error(`Failed fetch data of cart`, error.stack);
-  //     if (error instanceof HttpException) throw error;
-  //     throw new InternalServerErrorException({
-  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-  //       message: 'Failed fetch data of cart',
-  //     });
-  //   }
-  // }
+  @Public('deletecartpubliccall')
+  @Delete('/delete-all')
+  async remove(@Query('cartId') cartId: string, @CurrentUser() user: User) {
+    try {
+      return await this.cartService.remove(cartId);
+    } catch (error) {
+      AppLogger.error(`Failed cart delete`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed cart delete',
+      });
+    }
+  }
 }

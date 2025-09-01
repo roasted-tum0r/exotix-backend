@@ -37,6 +37,17 @@ enum OfferType {
   COUPON
 }
 
+enum DiscountType {
+  FLAT        // Flat ₹X discount
+  PERCENTAGE  // X% off
+  BOGO        // Buy One Get One (or N+M)
+}
+
+enum OfferScope {
+  ITEM
+  CART
+}
+
 model User {
   id          String       @id @default(uuid())
   firstname   String
@@ -111,10 +122,16 @@ model OfferMaster {
   type        OfferType
   validFrom   DateTime
   validUpto   DateTime
+  discountType DiscountType    // FLAT, PERCENTAGE, BOGO, etc.
+  discountValue Float?         // e.g. 10% or 100 Rs
+  minPurchaseAmount Float?     // cart level condition
+  minQuantity Int?             // item level condition
+  applicableScope OfferScope   // ITEM or CART
+  isStackable Boolean @default(false)
 
   // Relations
-  items       Item[]
-  coupons     Order[]
+  items       Item[]           // only relevant if scope = ITEM
+  orders      Order[]          @relation("AppliedOffers")
 }
 
 model Item {

@@ -17,6 +17,7 @@ import { DateToISOStringInterceptor } from './common/intercptors/date-transforme
 import { CartModule } from './modules/cart/cart.module';
 import { CartItemsModule } from './modules/cart-items/cart-items.module';
 import { BranchModule } from './modules/branch/branch.module';
+import { AddressModule } from './modules/address/address.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { BranchModule } from './modules/branch/branch.module';
     CartModule,
     CartItemsModule,
     BranchModule,
+    AddressModule,
   ],
   controllers: [AppController],
   providers: [

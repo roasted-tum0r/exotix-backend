@@ -81,8 +81,8 @@ export class AddressRepository {
               ? 'asc'
               : 'desc',
           },
-          skip: (paginatinObject.page - 1) * paginatinObject.limit,
-          take: paginatinObject.limit,
+          skip: (+paginatinObject.page - 1) * +paginatinObject.limit,
+          take: +paginatinObject.limit,
           select: {
             id: true,
             receiverName: true,
@@ -106,9 +106,9 @@ export class AddressRepository {
         }),
       ]);
 
-      return await {
+      return {
         total,
-        currentPage: paginatinObject.page,
+        currentPage: +paginatinObject.page,
         totalPages: Math.ceil(total / paginatinObject.limit),
         results: categories,
       };

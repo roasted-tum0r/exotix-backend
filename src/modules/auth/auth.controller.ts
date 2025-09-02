@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -35,6 +36,7 @@ export class AuthController {
       return await this.authUserService.postNewUser(body);
     } catch (error) {
       AppLogger.error('Error in registerNewUser:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -54,6 +56,7 @@ export class AuthController {
       };
     } catch (error) {
       AppLogger.error('Error in loginWithPassword:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -69,6 +72,7 @@ export class AuthController {
       return await this.authUserService.requestLoginOtp(body);
     } catch (error) {
       AppLogger.error('Error in requestLoginOtp:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -84,6 +88,7 @@ export class AuthController {
       return await this.authUserService.verifyLoginOtp(body);
     } catch (error) {
       AppLogger.error('Error in verifyLoginOtp:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -102,6 +107,7 @@ export class AuthController {
       return await this.authUserService.updateUserInfo(id, updateAuthDto, user);
     } catch (error) {
       AppLogger.error('Error in verifyLoginOtp:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -120,6 +126,7 @@ export class AuthController {
       return await this.authUserService.deactivateUser(id, user);
     } catch (error) {
       AppLogger.error('Error in deactivateUser:', error);
+      if (error instanceof HttpException) throw error;
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
@@ -128,18 +135,18 @@ export class AuthController {
       };
     }
   }
-  @Get()
-  findAll() {
-    return this.authUserService.findAll();
-  }
+  // @Get()
+  // findAll() {
+  //   return this.authUserService.findAll();
+  // }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authUserService.findOne(+id);
-  }
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.authUserService.findOne(+id);
+  // }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authUserService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.authUserService.remove(+id);
+  // }
 }

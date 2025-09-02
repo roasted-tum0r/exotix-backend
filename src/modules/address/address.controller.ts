@@ -41,7 +41,7 @@ export class AddressController {
   @Get('/list')
   async findMany(@CurrentUser() user: User, @Query() pagination: IPagination) {
     try {
-      return await this.service.findMany(user, pagination);
+      return await this.service.findMany(user, pagination as IPagination);
     } catch (error) {
       AppLogger.error(`Failed address fetch`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -68,7 +68,7 @@ export class AddressController {
 
   @Patch('/update')
   async update(
-    @Param('addressId') addressId: string,
+    @Query('addressId') addressId: string,
     @Body() dto: UpdateAddressDto,
   ) {
     try {
@@ -83,7 +83,7 @@ export class AddressController {
     }
   }
 
-  @Delete()
+  @Delete('/delete')
   async delete(@Body() dto: DeleteAddressDto) {
     try {
       return await this.service.delete(dto);

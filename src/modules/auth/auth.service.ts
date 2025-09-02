@@ -88,7 +88,8 @@ export class AuthService {
       });
       return requestLoginOtp;
     } catch (error) {
-      
+      AppLogger.error(`Failed create user`, error.stack);
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,

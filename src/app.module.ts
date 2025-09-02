@@ -18,6 +18,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { CartItemsModule } from './modules/cart-items/cart-items.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { AddressModule } from './modules/address/address.module';
+import { OffersModule } from './modules/offers/offers.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AddressModule } from './modules/address/address.module';
     CartItemsModule,
     BranchModule,
     AddressModule,
+    OffersModule,
   ],
   controllers: [AppController],
   providers: [

@@ -124,9 +124,11 @@ export class ItemsRepository {
       ]);
 
       return {
-        total,
-        currentPage: paginatinObject.page,
-        totalPages: Math.ceil(total / paginatinObject.limit),
+        meta: {
+          total,
+          currentPage: paginatinObject.page,
+          totalPages: Math.ceil(total / paginatinObject.limit),
+        },
         results: categories,
       };
     } catch (error) {
@@ -177,7 +179,7 @@ export class ItemsRepository {
         },
         select: {
           id: true,
-          name:true,
+          name: true,
           isAvailable: true,
           cartItems: {
             select: {
@@ -202,7 +204,7 @@ export class ItemsRepository {
         select: {
           id: true,
           isAvailable: true,
-          name:true,
+          name: true,
           cartItems: {
             select: {
               id: true,
@@ -252,7 +254,7 @@ export class ItemsRepository {
   async remove(ids: string[]) {
     try {
       return this.prisma.item.updateMany({
-        where: {  id: { in: ids }  },
+        where: { id: { in: ids } },
         data: { isActive: false },
       });
     } catch (error) {

@@ -107,9 +107,11 @@ export class AddressRepository {
       ]);
 
       return {
-        total,
-        currentPage: +paginatinObject.page,
-        totalPages: Math.ceil(total / paginatinObject.limit),
+        meta: {
+          total,
+          currentPage: +paginatinObject.page,
+          totalPages: Math.ceil(total / paginatinObject.limit),
+        },
         results: categories,
       };
     } catch (error) {

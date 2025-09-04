@@ -1,7 +1,7 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateItemDto, CreateItemRepoDto } from './dto/create-item.dto';
 import { UpdateItemDto, UpdateItemRepoDto } from './dto/update-item.dto';
-import { FilterItemDto } from './dto/filter-item.dto';
+import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { IPagination } from 'src/common/interfaces/app.interface';
@@ -75,6 +75,7 @@ export class ItemsRepository {
           isAvailable: true,
           price: true,
           image: true,
+          _count: true,
         },
       });
     } catch (error) {
@@ -257,6 +258,55 @@ export class ItemsRepository {
         where: { id: { in: ids } },
         data: { isActive: false },
       });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+  async findAllItems(pagination: SearchItemDto, where: Prisma.ItemWhereInput) {
+    try {
+      const [results, total] = await Promise.all([
+        this.prisma.item.findMany({
+          where,
+          orderBy: {
+            [`${pagination.sortBy}`]: pagination.isAsc ? 'asc' : 'desc',
+          },
+          skip: (+pagination.page - 1) * +pagination.limit,
+          take: +pagination.limit,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+            category: {
+              select: { id: true, name: true},
+            },
+            images: true,
+            categoryId: true,
+            reviews: true,
+            rating: true,
+            isAvailable: true,
+            price: true,
+            image: true,
+            // _count: true,
+          },
+        }),
+        this.prisma.item.count({ where }),
+      ]);
+
+      return {
+        meta: {
+          total,
+          currentPage: +pagination.page,
+          totalPages: Math.ceil(total / pagination.limit),
+        },
+        results,
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

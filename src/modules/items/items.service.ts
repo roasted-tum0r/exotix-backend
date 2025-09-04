@@ -11,8 +11,8 @@ import {
 import { ItemsRepository } from './items.repository';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { FilterItemDto } from './dto/filter-item.dto';
-import { User } from '@prisma/client';
+import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
+import { Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { IPagination } from 'src/common/interfaces/app.interface';
 
@@ -31,10 +31,9 @@ export class ItemsService {
         statusCode: HttpStatus.CREATED,
         error: false,
         message: 'Items were created',
-        data:
-          {
-            ...payload,
-          },
+        data: {
+          ...payload,
+        },
       };
     } catch (error) {
       AppLogger.error(`Failed create item`, error.stack);
@@ -48,21 +47,11 @@ export class ItemsService {
 
   async findAll(filters: FilterItemDto) {
     try {
-      const payload = await this.repo.findAll(filters);
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Items were fetched',
-        data:
-          // Array.isArray(payload)
-          //   ?
-          payload.map((r) => ({
-            ...r,
-          })),
-        //   :
-        // {
-        //   ...payload,
-        // },
+        data: await this.repo.findAll(filters),
       };
     } catch (error) {
       AppLogger.error(`Failed search and filter item`, error.stack);
@@ -73,19 +62,24 @@ export class ItemsService {
       });
     }
   }
-  async getAllItemsService(paginatinObject: IPagination) {
+  async getAllItemsService(paginatinObject: SearchItemDto) {
     try {
-      const payload = await this.repo.getAllItemsRepo(paginatinObject);
+      const whereClause = this.buildItemWhere({
+        categoryIds: paginatinObject.categoryIds,
+        isAvailable: paginatinObject.isAvailable,
+        maxPrice: paginatinObject.maxPrice,
+        minPrice: paginatinObject.minPrice,
+        search: paginatinObject.search,
+      });
+      const payload = await this.repo.findAllItems(
+        paginatinObject,
+        whereClause,
+      );
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Items list was fetched',
-        data: {
-          ...payload,
-          results: payload.results.map((r) => ({
-            ...r,
-          })),
-        },
+        data: payload,
       };
     } catch (error) {
       AppLogger.error(`Failed search and filter item`, error.stack);
@@ -107,7 +101,7 @@ export class ItemsService {
           message: 'Item not found',
         });
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Items details were fetched',
         data: {
@@ -131,7 +125,7 @@ export class ItemsService {
         updatedBy: user.id,
       });
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Item was updated',
         data: {
@@ -164,7 +158,7 @@ export class ItemsService {
         });
       const payload = await this.repo.remove(ids);
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Item was deactivted',
         data: {
@@ -179,5 +173,61 @@ export class ItemsService {
         message: 'Failed to deactivate item',
       });
     }
+  }
+  // helper to build the where clause
+  private buildItemWhere(filters: FilterItemDto): Prisma.ItemWhereInput {
+    const { search, categoryIds, isAvailable } = filters || {};
+    // minPrice/maxPrice may come as string (query params) or number
+    const { minPrice, maxPrice } = filters || {};
+
+    const where: Prisma.ItemWhereInput = { isActive: true };
+
+    if (search) {
+      where.OR = [
+        {
+          name: {
+            contains: search.toLowerCase(),
+          } as Prisma.StringFilter<'Item'>,
+        },
+        {
+          description: {
+            contains: search.toLowerCase(),
+          } as Prisma.StringFilter<'Item'>,
+        },
+      ];
+    }
+
+    if (categoryIds && categoryIds.length) {
+      where.categoryId = { in: [...categoryIds] as any };
+    }
+
+    if (isAvailable !== undefined) {
+      where.isAvailable = isAvailable === 'true';
+    }
+
+    const parseNumberSafe = (v?: string | number): number | undefined => {
+      if (v === undefined || v === null) return undefined;
+      // if already a number
+      if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+      // parse string to float
+      const n = parseFloat(String(v));
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    const parsedMin = parseNumberSafe(minPrice);
+    const parsedMax = parseNumberSafe(maxPrice);
+
+    if (parsedMin !== undefined || parsedMax !== undefined) {
+      where.price = {
+        ...(parsedMin !== undefined
+          ? { gte: new Prisma.Decimal(parsedMin) }
+          : {}),
+        ...(parsedMax !== undefined
+          ? { lte: new Prisma.Decimal(parsedMax) }
+          : {}),
+      } as any;
+    }
+
+    return where;
   }
 }

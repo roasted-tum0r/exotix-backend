@@ -3,27 +3,22 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
-  UseGuards,
   HttpStatus,
   InternalServerErrorException,
-  NotFoundException,
   HttpException,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { FilterItemDto } from './dto/filter-item.dto';
+import { SearchItemDto } from './dto/filter-item.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { Roles } from 'src/common/decorators/user-role.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
-import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
-import { IPagination } from 'src/common/interfaces/app.interface';
 
 @Controller('items')
 export class ItemsController {
@@ -46,29 +41,29 @@ export class ItemsController {
       });
     }
   }
-  @Public('findAllItemsWithFiters')
-  @Post('/search')
-  async findAll(
-    // @Body() filters: FilterItemDto
-    @Body() filters: Omit<FilterItemDto, 'categoryIds'>,
-    @Body('categoryIds') categoryIds: string[],
-  ) {
-    try {
-      return await this.service.findAll({ ...filters, categoryIds });
-    } catch (error) {
-      AppLogger.error(`Failed search items`, error.stack);
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Failed to search items',
-      });
-    }
-  }
+  // @Public('findAllItemsWithFiters')
+  // @Post('/search')
+  // async findAll(
+  //   // @Body() filters: FilterItemDto
+  //   @Body() filters: FilterItemDto,
+  //   @Body('categoryIds') categoryIds: string[],
+  // ) {
+  //   try {
+  //     return await this.service.findAll({ ...filters, categoryIds });
+  //   } catch (error) {
+  //     AppLogger.error(`Failed search items`, error.stack);
+  //     if (error instanceof HttpException) throw error;
+  //     throw new InternalServerErrorException({
+  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+  //       message: 'Failed to search items',
+  //     });
+  //   }
+  // }
   @Public('findAllItemsListWithPagination')
   @Get('/list')
-  async getAllItems(@Query() paginationObject: IPagination) {
+  async getAllItems(@Query() filterObject: SearchItemDto) {
     try {
-      return await this.service.getAllItemsService(paginationObject);
+      return await this.service.getAllItemsService(filterObject);
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
       if (error instanceof HttpException) throw error;

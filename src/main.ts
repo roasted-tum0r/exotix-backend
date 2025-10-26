@@ -8,6 +8,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
+  app.enableCors({
+    // origin: [
+    //   'http://localhost:5173', // your Vite frontend (dev)
+    //   'https://your-frontend-domain.com', // production frontend
+    // ],
+    origin: '*', // allow all origins temporarily
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // if you use cookies or auth headers
+  });
   app.setGlobalPrefix('exotix-api');
   app.enableShutdownHooks();
   app.useLogger(app.get(Logger));

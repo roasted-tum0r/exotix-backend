@@ -154,6 +154,7 @@ export class ItemCategoryRepo {
             description: true,
             createdAt: true,
             updatedAt: true,
+            _count: true,
           },
         }),
         this.prismaService.categoryMaster.count({

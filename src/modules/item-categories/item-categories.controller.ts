@@ -20,7 +20,6 @@ import { Roles } from 'src/common/decorators/user-role.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { Public } from 'src/common/decorators/public.decorator';
-import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';

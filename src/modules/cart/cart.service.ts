@@ -98,15 +98,25 @@ export class CartService {
 
   async getCartService(getCart: GetCartDto, isGuestCart: boolean) {
     try {
-      return {
-        statusCode: HttpStatus.OK,
-        error: false,
-        message: 'Cart fetched',
-        data: await this.cartRepository.getCartByUserID(
-          getCart.userId,
-          isGuestCart,
-        ),
-      };
+      if (getCart.userId) {
+        // If userId is present, we can fetch the cart
+        return {
+          statusCode: HttpStatus.OK,
+          error: false,
+          message: 'Cart fetched',
+          data: await this.cartRepository.getCartByUserID(
+            getCart.userId,
+            isGuestCart,
+          ),
+        };
+      } else {
+        return {
+          statusCode: HttpStatus.OK,
+          error: false,
+          message: 'Cart fetched',
+          data: null,
+        };
+      }
     } catch (error) {
       AppLogger.error(`Failed get cart`, error.stack);
       if (error instanceof HttpException) throw error;

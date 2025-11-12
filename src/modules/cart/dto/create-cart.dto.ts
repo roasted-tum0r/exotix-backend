@@ -10,10 +10,6 @@ export class CreateCartDto {
   isGuestCart: boolean;
 }
 export class GetCartDto {
-  @IsNotEmpty()
   @IsUUID()
-  cartId: string;
-  @IsNotEmpty()
-  @IsUUID()
-  userId: string;
+  userId?: string;
 }

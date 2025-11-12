@@ -41,14 +41,12 @@ export class CartController {
   @Public('getCart')
   @Get()
   async getCart(
-    @Query('cartId') cartId: string,
     @Query('userId') userId: string,
     @Query('isGuestCart') isGuestCart: string,
   ) {
     try {
       return await this.cartService.getCartService(
         {
-          cartId,
           userId,
         },
         isGuestCart === 'true',

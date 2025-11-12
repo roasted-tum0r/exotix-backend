@@ -7,8 +7,10 @@ export class CartRepository {
   constructor(private readonly prismaService: PrismaService) {}
   async getCartByUserID(userId: string, isGuestCart: boolean) {
     try {
-      return await this.prismaService.cart.findFirst({
-        where: { [isGuestCart ? `guestId` : `userId`]: userId },
+      return await this.prismaService.cart.findUnique({
+        where: isGuestCart
+          ? { guestId_isActive: { guestId: userId, isActive: true } }
+          : { userId_isActive: { userId, isActive: true } },
         select: {
           id: true,
           createdAt: true,

@@ -76,6 +76,7 @@ export class ItemsRepository {
           price: true,
           image: true,
           _count: true,
+          offer: true,
         },
       });
     } catch (error) {
@@ -284,7 +285,7 @@ export class ItemsRepository {
             createdAt: true,
             updatedAt: true,
             category: {
-              select: { id: true, name: true},
+              select: { id: true, name: true },
             },
             images: true,
             categoryId: true,

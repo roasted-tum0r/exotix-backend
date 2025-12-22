@@ -3,28 +3,25 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
+
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+  implements OnModuleInit, OnModuleDestroy {
   constructor() {
+    // console.log('DATABASE_URL', process.env.DATABASE_URL);
+    const adapter = new PrismaMariaDb(process.env.DATABASE_URL ?? '');
+
     super({
+      adapter,
       log: ['query', 'info', 'warn', 'error'],
       errorFormat: 'pretty',
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL,
-        },
-      },
-      transactionOptions: {
-        maxWait: 10000, // wait up to 10s to get a connection from pool
-        timeout: 30000, // query timeout = 30s
-      },
     });
   }
+
   async onModuleInit() {
     await this.$connect();
   }

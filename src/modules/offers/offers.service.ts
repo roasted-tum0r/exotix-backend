@@ -4,9 +4,6 @@ import { CreateOfferDto, CreateOfferExtraDto } from './dto/create-offer.dto';
 import { UpdateOfferDto, UpdateOfferExtrasDto } from './dto/update-offer.dto';
 import {
   Prisma,
-  OfferMaster,
-  OfferType,
-  DiscountType,
   User,
 } from '@prisma/client';
 import { FindOfferDto } from './dto/find-offer.dto';

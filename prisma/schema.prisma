@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql" // or your DB of choice
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -69,6 +69,10 @@ model User {
   images     Image[]
   reviews    Review[]
   carts      Cart[]
+  // Add these
+  favourites    UserFavourite[]
+  wishlists     UserWishlist[]
+
   // Relations for CategoryMaster
   categoriesCreated CategoryMaster[] @relation("CategoryCreator")
   categoriesUpdated CategoryMaster[] @relation("CategoryUpdater")
@@ -188,6 +192,10 @@ model Item {
    // Relationships
   reviews     Review[]  // One-to-many
   images      Image[]   // One-to-many
+  // Add these
+  favourites    UserFavourite[]
+  wishlists     UserWishlist[]
+
 
   @@index([isActive])
   @@index([createdBy])
@@ -199,6 +207,35 @@ model Item {
   @@index([categoryId, isAvailable, isActive, price])   
   @@index([categoryId, rating])
 }
+model UserFavourite {
+  id        String   @id @default(uuid())
+  userId    String
+  itemId    String
+
+  user      User     @relation(fields: [userId], references: [id])
+  item      Item     @relation(fields: [itemId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])       // Prevent duplicate favourites
+  @@index([userId])
+  @@index([itemId])
+}
+model UserWishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  itemId    String
+
+  user      User     @relation(fields: [userId], references: [id])
+  item      Item     @relation(fields: [itemId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, itemId])       // Prevent duplicate wishlist entries
+  @@index([userId])
+  @@index([itemId])
+}
+
 
 model CartItem {
   id          String       @id @default(uuid())

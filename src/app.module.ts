@@ -19,6 +19,7 @@ import { CartItemsModule } from './modules/cart-items/cart-items.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { AddressModule } from './modules/address/address.module';
 import { OffersModule } from './modules/offers/offers.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -38,6 +39,10 @@ import { OffersModule } from './modules/offers/offers.module';
           },
         },
       },
+    }),
+    ConfigModule.forRoot({
+      isGlobal: true,       // make env available everywhere
+      envFilePath: '.env',  // OPTIONAL, but ensures correct path
     }),
     PingModule,
     ItemsModule,
@@ -63,4 +68,4 @@ import { OffersModule } from './modules/offers/offers.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -318,4 +318,40 @@ export class ItemsRepository {
       });
     }
   }
+
+  async addToFavourite(userId: string, itemId: string) {
+    try {
+      return await this.prisma.userFavourite.create({
+        data: {
+          userId,
+          itemId,
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+
+  async addToWishlist(userId: string, itemId: string) {
+    try {
+      return await this.prisma.userWishlist.create({
+        data: {
+          userId,
+          itemId,
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
 }

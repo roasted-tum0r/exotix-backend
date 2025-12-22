@@ -119,4 +119,38 @@ export class ItemsController {
       });
     }
   }
+
+  @Post('/favourite')
+  async addToFavourite(
+    @Query('itemId') itemId: string,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.service.addToFavourite(user.id, itemId);
+    } catch (error) {
+      AppLogger.error(`Failed to add item to favourites`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to add item to favourites',
+      });
+    }
+  }
+
+  @Post('/wishlist')
+  async addToWishlist(
+    @Query('itemId') itemId: string,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.service.addToWishlist(user.id, itemId);
+    } catch (error) {
+      AppLogger.error(`Failed to add item to wishlist`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to add item to wishlist',
+      });
+    }
+  }
 }

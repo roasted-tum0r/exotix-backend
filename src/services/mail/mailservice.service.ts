@@ -6,6 +6,7 @@ export class MailService {
   private readonly resend: Resend;
 
   constructor() {
+    console.log("ENV CHECK RESEND_API_KEY =", process.env.RESEND_API_KEY);
     this.resend = new Resend(process.env.RESEND_API_KEY);
   }
   /**

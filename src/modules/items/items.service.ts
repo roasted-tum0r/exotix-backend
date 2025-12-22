@@ -174,6 +174,49 @@ export class ItemsService {
       });
     }
   }
+
+  async addToFavourite(userId: string, itemId: string) {
+    try {
+      const payload = await this.repo.addToFavourite(userId, itemId);
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Item added to favourites',
+        data: {
+          ...payload,
+        },
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to add item to favourites`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to add item to favourites',
+      });
+    }
+  }
+
+  async addToWishlist(userId: string, itemId: string) {
+    try {
+      const payload = await this.repo.addToWishlist(userId, itemId);
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Item added to wishlist',
+        data: {
+          ...payload,
+        },
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to add item to wishlist`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to add item to wishlist',
+      });
+    }
+  }
+
   // helper to build the where clause
   private buildItemWhere(filters: FilterItemDto): Prisma.ItemWhereInput {
     const { search, categoryIds, isAvailable } = filters || {};

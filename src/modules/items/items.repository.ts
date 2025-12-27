@@ -1,6 +1,6 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
-import { CreateItemDto, CreateItemRepoDto } from './dto/create-item.dto';
-import { UpdateItemDto, UpdateItemRepoDto } from './dto/update-item.dto';
+import { CreateItemRepoDto } from './dto/create-item.dto';
+import { UpdateItemRepoDto } from './dto/update-item.dto';
 import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';

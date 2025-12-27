@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AddressService } from './address.service';
 import { AddressController } from './address.controller';
-import { PrismaService } from 'nestjs-prisma';
 import { AddressRepository } from './address.repository';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Module({
   controllers: [AddressController],

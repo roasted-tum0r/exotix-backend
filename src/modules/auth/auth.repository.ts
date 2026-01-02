@@ -44,6 +44,10 @@ export class UserRepository {
     data: Omit<CreateAuthUserDto, 'registrationPurpose'> & { password: string },
   ): Promise<User> {
     try {
+      await this.prisma.newsletterSubscriber.updateMany({
+        where: { email: data.email },
+        data: { isUser: true },
+      });
       return this.prisma.user.create({
         data,
       });

@@ -20,6 +20,7 @@ import { BranchModule } from './modules/branch/branch.module';
 import { AddressModule } from './modules/address/address.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { ConfigModule } from '@nestjs/config';
+import { NewsletterSubsModule } from './modules/newsletter-subs/newsletter-subs.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ConfigModule } from '@nestjs/config';
     BranchModule,
     AddressModule,
     OffersModule,
+    NewsletterSubsModule,
   ],
   controllers: [AppController],
   providers: [

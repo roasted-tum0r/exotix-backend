@@ -39,4 +39,138 @@ export class Templates {
       </div>
     `;
   }
+
+  static welcomeEmailBySubscription(
+    email: string,
+    unsubscribeApiUrl: string,
+  ): string {
+    const unsubscribeLink = `${unsubscribeApiUrl}?email=${encodeURIComponent(
+      email,
+    )}`;
+
+    return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f7f7f7;
+        padding: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        padding: 24px;
+        border-radius: 8px;
+      }
+      h1 {
+        color: #2c2c2c;
+      }
+      p {
+        color: #555;
+        line-height: 1.6;
+      }
+      ul {
+        color: #555;
+        padding-left: 20px;
+      }
+      .unsubscribe {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #888;
+      }
+      .unsubscribe a {
+        color: #888;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Welcome to Anandini's 🎉</h1>
+
+      <p>
+        Thank you for subscribing! You’ll now receive updates about:
+      </p>
+
+      <ul>
+        <li>New product launches</li>
+        <li>Exclusive discounts</li>
+        <li>Price drops & special offers</li>
+      </ul>
+
+      <p>
+        We promise — no spam, only meaningful updates.
+      </p>
+
+      <div class="unsubscribe">
+  If you ever wish to unsubscribe,
+  <a href="${unsubscribeLink}" target="_blank" rel="noopener noreferrer">
+    click here
+  </a>.
+</div>
+    </div>
+  </body>
+</html>
+    `;
+  }
+
+   static unsubscribeConfirmationEmail(email: string): string {
+    return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f7f7f7;
+        padding: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        padding: 24px;
+        border-radius: 8px;
+      }
+      h1 {
+        color: #2c2c2c;
+      }
+      p {
+        color: #555;
+        line-height: 1.6;
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>You’ve been unsubscribed 👋</h1>
+
+      <p>
+        Hi ${email},<br/>
+        You have successfully unsubscribed from Anandini’s newsletter.
+      </p>
+
+      <p>
+        We’re sad to see you go, but you can always resubscribe in the future if you change your mind!
+      </p>
+
+      <div class="footer">
+        Anandini Team<br/>
+        &copy; ${new Date().getFullYear()} Anandini
+      </div>
+    </div>
+  </body>
+</html>
+    `;
+  }
 }

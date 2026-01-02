@@ -48,6 +48,16 @@ enum OfferScope {
   CART
 }
 
+
+enum SubscriptionSource {
+  FOOTER
+  POPUP
+  CHECKOUT
+  CAMPAIGN
+  MANUAL
+}
+
+
 model User {
   id          String       @id @default(uuid())
   firstname   String
@@ -406,4 +416,31 @@ model Cart {
   @@index([userId])
   @@index([guestId])
   @@index([isActive])
+}
+
+
+model NewsletterSubscriber {
+  id                String   @id @default(uuid())
+
+  // Core identity
+  email             String   @unique
+  name              String?
+  phone             String?
+
+  // Funnel & lifecycle
+  isActive           Boolean  @default(true)
+  isUser             Boolean  @default(false)
+
+  source             SubscriptionSource
+
+  // Segmentation & analytics
+  tags               Json?
+  subscribedAt       DateTime @default(now())
+  unsubscribedAt     DateTime?
+
+  lastEmailSentAt    DateTime?
+
+  @@index([isActive])
+  @@index([isUser])
+  @@index([source])
 }

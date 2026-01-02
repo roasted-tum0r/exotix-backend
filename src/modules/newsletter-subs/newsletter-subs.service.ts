@@ -27,7 +27,7 @@ export class NewsletterSubsService {
         `🎉 Welcome to Anandini's!`,
         Templates.welcomeEmailBySubscription(
           dto.email,
-          'http://localhost:4060/exotix-api/newsletter-subs/unsubscribe', // replace with env var later
+          `${process.env.PUBLIC_API_BASE_URL ?? 'https://exotix-backend.onrender.com/exotix-api/'}newsletter-subs/unsubscribe`, // replace with env var later
         ),
       );
 

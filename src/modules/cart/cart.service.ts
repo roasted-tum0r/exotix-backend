@@ -86,7 +86,7 @@ export class CartService {
       // const newCartItem = await this.cartItemsRepository.addCartItem()
       //if cart doesnt exist we create a new cart and add the item to it so we call one from cart repo one from cat item repo both to create
       // Reminder: Need to create a bulk item discount update call in item module
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed add to cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -117,7 +117,7 @@ export class CartService {
           data: null,
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed get cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -150,7 +150,7 @@ export class CartService {
           addedItems: finalItemCount.addedItems,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed get cart short info`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -178,15 +178,15 @@ export class CartService {
     } catch (error) {}
   }
 
-  async remove(id: string) {
+  async remove(id: string, itemIds: string[] = []) {
     try {
       return {
-        statusCode: HttpStatus.CREATED,
+        statusCode: HttpStatus.OK,
         error: false,
         message: 'Cart was deleted',
-        data: await this.cartRepository.deleteCart(id),
+        data: await this.cartRepository.deleteCart(id, itemIds),
       };
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed to delete cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({

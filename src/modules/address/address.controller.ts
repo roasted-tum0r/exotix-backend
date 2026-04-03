@@ -28,7 +28,7 @@ export class AddressController {
   async create(@CurrentUser() user: User, @Body() dto: CreateAddressDto) {
     try {
       return await this.service.create(user, dto);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed create address`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -42,7 +42,7 @@ export class AddressController {
   async findMany(@CurrentUser() user: User, @Query() pagination: IPagination) {
     try {
       return await this.service.findMany(user, pagination as IPagination);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed address fetch`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -56,7 +56,7 @@ export class AddressController {
   async findById(@Query('addressId') addressId: string) {
     try {
       return await this.service.findById(addressId);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed to get one address`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -73,7 +73,7 @@ export class AddressController {
   ) {
     try {
       return await this.service.update(addressId, dto);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed update address`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -87,7 +87,7 @@ export class AddressController {
   async delete(@Body() dto: DeleteAddressDto) {
     try {
       return await this.service.delete(dto);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed to delete addresses`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({

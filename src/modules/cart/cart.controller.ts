@@ -29,7 +29,7 @@ export class CartController {
   async addToCart(@Body() createCart: CreateCartDto) {
     try {
       return await this.cartService.addToCartService(createCart);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed add items to cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -51,7 +51,7 @@ export class CartController {
         },
         isGuestCart === 'true',
       );
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed to get cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -73,7 +73,7 @@ export class CartController {
         userId,
         isGuestCart: isGuestCart === 'true',
       });
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed fetch data of cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -94,7 +94,7 @@ export class CartController {
   ) {
     try {
       return await this.cartService.mergeCartupdate(guestUserId, user);
-    } catch (error) {
+    } catch (error: any) {
       AppLogger.error(`Failed fetch data of cart`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
@@ -105,10 +105,14 @@ export class CartController {
   }
   @Public('deletecartpubliccall')
   @Delete('/delete-all')
-  async remove(@Query('cartId') cartId: string, @CurrentUser() user: User) {
+  async remove(
+    @Query('cartId') cartId: string,
+    @Body() body: { itemIds: string[] },
+    @CurrentUser() user: User,
+  ) {
     try {
-      return await this.cartService.remove(cartId);
-    } catch (error) {
+      return await this.cartService.remove(cartId, body?.itemIds ?? []);
+    } catch (error: any) {
       AppLogger.error(`Failed cart delete`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({

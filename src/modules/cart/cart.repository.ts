@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class CartRepository {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
   async getCartByUserID(userId: string, isGuestCart: boolean) {
     try {
       return await this.prismaService.cart.findUnique({
@@ -187,13 +187,38 @@ export class CartRepository {
       });
     }
   }
-  async deleteCart(cartId: string) {
+  async deleteCart(cartId: string, itemIds: string[] = []) {
     try {
-      return await this.prismaService.$transaction(async (tx) => {
-        const cartItem = await tx.cartItem.deleteMany({
-          where: { cartId: cartId },
-        });
-        return { cartItem };
+      return await this.prismaService.$transaction(async (tx: any) => {
+        switch (true) {
+          // Selective delete: remove only specified items from this cart
+          case itemIds.length > 0: {
+            await tx.cartItem.deleteMany({
+              where: {
+                cartId: cartId,
+                itemId: { in: itemIds },
+              },
+            });
+            const cartItem = await tx.cartItem.findMany({
+              where: { cartId: cartId },
+            });
+            return { cartItem };
+          }
+          // Full delete: remove all items from this cart
+          default: {
+            await tx.cartItem.deleteMany({
+              where: { cartId: cartId },
+            });
+            const cart = await tx.cart.update({
+              where: { id: cartId },
+              data: { isActive: false },
+            });
+            const cartItem = await tx.cartItem.findMany({
+              where: { cartId: cartId },
+            });
+            return { cartItem, cart };
+          }
+        }
       });
     } catch (error) {
       AppLogger.error(error);

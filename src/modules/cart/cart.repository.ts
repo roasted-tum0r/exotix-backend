@@ -209,13 +209,13 @@ export class CartRepository {
             await tx.cartItem.deleteMany({
               where: { cartId: cartId },
             });
-            const cart = await tx.cart.delete({
-              where: { id: cartId },
-            });
+            // const cart = await tx.cart.delete({
+            //   where: { id: cartId },
+            // });
             const cartItem = await tx.cartItem.findMany({
               where: { cartId: cartId },
             });
-            return { cartItem, cart };
+            return { cartItem };
           }
         }
       });

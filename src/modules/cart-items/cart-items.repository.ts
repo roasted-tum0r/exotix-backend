@@ -52,9 +52,7 @@ export class CartItemsRepository {
           ? { guestId_itemId: { guestId: userId, itemId }, cartId: data.cartId }
           : { userId_itemId: { userId: userId, itemId }, cartId: data.cartId },
         data: {
-          quantity: {
-            [data.updateType]: data.quantity! > 0 ? data.quantity! : 1,
-          },
+          quantity: data.quantity! > 1 ? data.quantity! : 1,
         },
         select: {
           id: true,

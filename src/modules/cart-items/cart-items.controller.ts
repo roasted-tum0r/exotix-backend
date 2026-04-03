@@ -62,7 +62,7 @@ export class CartItemsController {
       });
     }
   }
-  @Public('updateCartItem')
+  @Public('deleteCartItem')
   @Delete('/delete')
   async remove(
     @Query('itemId') itemId: string,

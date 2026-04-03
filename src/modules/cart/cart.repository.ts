@@ -209,9 +209,8 @@ export class CartRepository {
             await tx.cartItem.deleteMany({
               where: { cartId: cartId },
             });
-            const cart = await tx.cart.update({
+            const cart = await tx.cart.delete({
               where: { id: cartId },
-              data: { isActive: false },
             });
             const cartItem = await tx.cartItem.findMany({
               where: { cartId: cartId },

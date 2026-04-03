@@ -180,12 +180,15 @@ export class CartService {
 
   async remove(id: string, itemIds: string[] = []) {
     try {
-      return {
-        statusCode: HttpStatus.OK,
-        error: false,
-        message: 'Cart was deleted',
-        data: await this.cartRepository.deleteCart(id, itemIds),
-      };
+      const deletedCart = await this.cartRepository.deleteCart(id, itemIds);
+      if (deletedCart.cartItem.length === 0) {
+        return {
+          statusCode: HttpStatus.OK,
+          error: false,
+          message: 'Cart was deleted',
+          data: deletedCart,
+        };
+      }
     } catch (error: any) {
       AppLogger.error(`Failed to delete cart`, error.stack);
       if (error instanceof HttpException) throw error;

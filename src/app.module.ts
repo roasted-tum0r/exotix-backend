@@ -21,6 +21,7 @@ import { AddressModule } from './modules/address/address.module';
 import { OffersModule } from './modules/offers/offers.module';
 import { ConfigModule } from '@nestjs/config';
 import { NewsletterSubsModule } from './modules/newsletter-subs/newsletter-subs.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { NewsletterSubsModule } from './modules/newsletter-subs/newsletter-subs.
     AddressModule,
     OffersModule,
     NewsletterSubsModule,
+    WishlistModule,
   ],
   controllers: [AppController],
   providers: [

@@ -41,6 +41,21 @@ export class ItemsController {
       });
     }
   }
+  @Public('itemSuggestions')
+  @Get('/suggestions')
+  async getSuggestions(@Query('search') search?: string) {
+    try {
+      return await this.service.getSuggestionsService(search);
+    } catch (error) {
+      AppLogger.error(`Failed to fetch item suggestions`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch item suggestions',
+      });
+    }
+  }
+
   @Public('findAllItemsListWithPagination')
   @Get('/list')
   async getAllItems(@Query() filterObject: SearchItemDto) {

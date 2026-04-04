@@ -42,6 +42,34 @@ export class ItemsService {
     }
   }
 
+  async getSuggestionsService(search?: string) {
+    try {
+      if (!search || search.trim().length === 0) {
+        const items = await this.repo.getLatestItems();
+        return {
+          statusCode: HttpStatus.OK,
+          error: false,
+          message: 'Latest items returned',
+          data: { items, categories: [] },
+        };
+      }
+      const data = await this.repo.getSuggestions(search.trim());
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Suggestions fetched',
+        data,
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to fetch suggestions`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch suggestions',
+      });
+    }
+  }
+
   async getAllItemsService(paginatinObject: SearchItemDto) {
     try {
       const whereClause = this.buildItemWhere({

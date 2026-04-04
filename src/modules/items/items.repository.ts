@@ -234,4 +234,73 @@ export class ItemsRepository {
       });
     }
   }
+
+  async getSuggestions(search: string) {
+    try {
+      const term = search.toLowerCase();
+      const [items, categories] = await Promise.all([
+        this.prisma.item.findMany({
+          where: {
+            isActive: true,
+            isAvailable: true,
+            name: { contains: term } as Prisma.StringFilter<'Item'>,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            price: true,
+            rating: true,
+            offer: true,
+            category: { select: { id: true, name: true } },
+          },
+        }),
+        this.prisma.categoryMaster.findMany({
+          where: {
+            isActive: true,
+            name: { contains: term } as Prisma.StringFilter<'CategoryMaster'>,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { id: true, name: true, image: true, description: true },
+        }),
+      ]);
+      return { items, categories };
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+
+  async getLatestItems() {
+    try {
+      return this.prisma.item.findMany({
+        where: { isActive: true, isAvailable: true },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          price: true,
+          rating: true,
+          offer: true,
+          category: { select: { id: true, name: true } },
+        },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
 }

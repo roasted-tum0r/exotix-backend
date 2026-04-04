@@ -3,8 +3,6 @@ import {
   HttpStatus,
   Injectable,
   InternalServerErrorException,
-  MethodNotAllowedException,
-  NotAcceptableException,
   NotFoundException,
   PreconditionFailedException,
 } from '@nestjs/common';
@@ -14,7 +12,6 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
 import { Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
-import { IPagination } from 'src/common/interfaces/app.interface';
 
 @Injectable()
 export class ItemsService {
@@ -45,23 +42,6 @@ export class ItemsService {
     }
   }
 
-  async findAll(filters: FilterItemDto) {
-    try {
-      return {
-        statusCode: HttpStatus.OK,
-        error: false,
-        message: 'Items were fetched',
-        data: await this.repo.findAll(filters),
-      };
-    } catch (error) {
-      AppLogger.error(`Failed search and filter item`, error.stack);
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Failed to search and filter item',
-      });
-    }
-  }
   async getAllItemsService(paginatinObject: SearchItemDto) {
     try {
       const whereClause = this.buildItemWhere({
@@ -262,12 +242,8 @@ export class ItemsService {
 
     if (parsedMin !== undefined || parsedMax !== undefined) {
       where.price = {
-        ...(parsedMin !== undefined
-          ? { gte: new Prisma.Decimal(parsedMin) }
-          : {}),
-        ...(parsedMax !== undefined
-          ? { lte: new Prisma.Decimal(parsedMax) }
-          : {}),
+        ...(parsedMin !== undefined ? { gte: parsedMin } : {}),
+        ...(parsedMax !== undefined ? { lte: parsedMax } : {}),
       } as any;
     }
 

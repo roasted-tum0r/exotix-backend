@@ -41,24 +41,6 @@ export class ItemsController {
       });
     }
   }
-  // @Public('findAllItemsWithFiters')
-  // @Post('/search')
-  // async findAll(
-  //   // @Body() filters: FilterItemDto
-  //   @Body() filters: FilterItemDto,
-  //   @Body('categoryIds') categoryIds: string[],
-  // ) {
-  //   try {
-  //     return await this.service.findAll({ ...filters, categoryIds });
-  //   } catch (error) {
-  //     AppLogger.error(`Failed search items`, error.stack);
-  //     if (error instanceof HttpException) throw error;
-  //     throw new InternalServerErrorException({
-  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-  //       message: 'Failed to search items',
-  //     });
-  //   }
-  // }
   @Public('findAllItemsListWithPagination')
   @Get('/list')
   async getAllItems(@Query() filterObject: SearchItemDto) {

@@ -15,7 +15,7 @@ import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
 export class ItemsService {
-  constructor(private readonly repo: ItemsRepository) {}
+  constructor(private readonly repo: ItemsRepository) { }
 
   async create(dto: CreateItemDto, user: User) {
     try {
@@ -249,7 +249,7 @@ export class ItemsService {
     }
 
     if (categoryIds && categoryIds.length) {
-      where.categoryId = { in: [...categoryIds] as any };
+      where.categoryId = { in: Array.isArray(categoryIds) ? [...categoryIds] : [categoryIds] as any };
     }
 
     if (isAvailable !== undefined) {

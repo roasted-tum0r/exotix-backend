@@ -383,7 +383,7 @@ model Image {
 model Review {
   id         String      @id @default(uuid())
   content    String
-  rating     Int      // Rating between 1–5 or use Float
+  rating     Int      // Rating between 1–5
   user       User     @relation(fields: [userId], references: [id])
   userId     String
 
@@ -396,9 +396,14 @@ model Review {
   images     Image[]
 
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, itemId])    // one review per user per item
+  @@unique([userId, branchId])  // one review per user per branch
   @@index([itemId])
   @@index([branchId])
   @@index([userId])
+  @@index([rating])
 }
 model Cart {
   id        String      @id @default(uuid())

@@ -13,7 +13,7 @@ import {
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { SearchItemDto } from './dto/filter-item.dto';
+import { RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -152,7 +152,7 @@ export class ItemsController {
   }
 
   /**
-   * GET /items/:id/similar
+   * GET /items/details/:id/similar?page=1&limit=6&sortBy=rating&isAsc=false
    * Publicly fetch items in the same category as the given item.
    * Section label: "Similar Items"
    */
@@ -160,10 +160,10 @@ export class ItemsController {
   @Get('/details/:id/similar')
   async getSimilarItems(
     @Param('id') id: string,
-    @Query('limit') limit?: number,
+    @Query() pagination: RecommendationPaginationDto,
   ) {
     try {
-      return await this.service.getSimilarItems(id, limit ? +limit : 6);
+      return await this.service.getSimilarItems(id, pagination);
     } catch (error) {
       AppLogger.error(`Failed to fetch similar items`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -175,7 +175,7 @@ export class ItemsController {
   }
 
   /**
-   * GET /items/:id/also-like
+   * GET /items/details/:id/also-like?page=1&limit=6&sortBy=price&isAsc=true
    * Publicly fetch items in a ±30% price range.
    * Section label: "Items You May Like"
    */
@@ -183,10 +183,10 @@ export class ItemsController {
   @Get('/details/:id/also-like')
   async getAlsoLikeItems(
     @Param('id') id: string,
-    @Query('limit') limit?: number,
+    @Query() pagination: RecommendationPaginationDto,
   ) {
     try {
-      return await this.service.getAlsoLikeItems(id, limit ? +limit : 6);
+      return await this.service.getAlsoLikeItems(id, pagination);
     } catch (error) {
       AppLogger.error(`Failed to fetch also-like items`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -198,7 +198,7 @@ export class ItemsController {
   }
 
   /**
-   * GET /items/:id/also-bought
+   * GET /items/details/:id/also-bought?page=1&limit=6&sortBy=name&isAsc=true
    * Publicly fetch items co-purchased with the given item, ranked by frequency.
    * Section label: "People Also Bought"
    */
@@ -206,10 +206,10 @@ export class ItemsController {
   @Get('/details/:id/also-bought')
   async getAlsoBoughtItems(
     @Param('id') id: string,
-    @Query('limit') limit?: number,
+    @Query() pagination: RecommendationPaginationDto,
   ) {
     try {
-      return await this.service.getAlsoBoughtItems(id, limit ? +limit : 6);
+      return await this.service.getAlsoBoughtItems(id, pagination);
     } catch (error) {
       AppLogger.error(`Failed to fetch also-bought items`, error.stack);
       if (error instanceof HttpException) throw error;

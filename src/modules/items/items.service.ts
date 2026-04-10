@@ -9,7 +9,7 @@ import {
 import { ItemsRepository } from './items.repository';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
+import { FilterItemDto, RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
 import { Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
@@ -281,9 +281,9 @@ export class ItemsService {
 
   /**
    * GET /items/:id/similar
-   * Same-category items sorted by rating.
+   * Same-category items — fully paginated.
    */
-  async getSimilarItems(itemId: string, limit = 6) {
+  async getSimilarItems(itemId: string, pagination: RecommendationPaginationDto) {
     try {
       const item = await this.repo.findOne(itemId);
       if (!item)
@@ -292,12 +292,17 @@ export class ItemsService {
           error: true,
           message: 'Item not found',
         });
-      const data = await this.repo.getSimilarItems(itemId, item.categoryId, limit);
+      const { results, total } = await this.repo.getSimilarItems(itemId, item.categoryId, pagination);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Similar items fetched',
-        data,
+        data: results,
+        meta: {
+          total,
+          currentPage: +pagination.page,
+          totalPages: Math.ceil(total / +pagination.limit),
+        },
       };
     } catch (error) {
       AppLogger.error('Failed to fetch similar items', error.stack);
@@ -311,9 +316,9 @@ export class ItemsService {
 
   /**
    * GET /items/:id/also-like
-   * Items in a ±30% price range sorted by rating.
+   * Items in a ±30% price range — fully paginated.
    */
-  async getAlsoLikeItems(itemId: string, limit = 6) {
+  async getAlsoLikeItems(itemId: string, pagination: RecommendationPaginationDto) {
     try {
       const item = await this.repo.findOne(itemId);
       if (!item)
@@ -322,12 +327,17 @@ export class ItemsService {
           error: true,
           message: 'Item not found',
         });
-      const data = await this.repo.getAlsoLikeItems(itemId, item.price, limit);
+      const { results, total } = await this.repo.getAlsoLikeItems(itemId, item.price, pagination);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Items you may like fetched',
-        data,
+        data: results,
+        meta: {
+          total,
+          currentPage: +pagination.page,
+          totalPages: Math.ceil(total / +pagination.limit),
+        },
       };
     } catch (error) {
       AppLogger.error('Failed to fetch also-like items', error.stack);
@@ -341,16 +351,21 @@ export class ItemsService {
 
   /**
    * GET /items/:id/also-bought
-   * Co-purchased items ranked by order co-occurrence frequency.
+   * Co-purchased items ranked by frequency — fully paginated.
    */
-  async getAlsoBoughtItems(itemId: string, limit = 6) {
+  async getAlsoBoughtItems(itemId: string, pagination: RecommendationPaginationDto) {
     try {
-      const data = await this.repo.getAlsoBoughtItems(itemId, limit);
+      const { results, total } = await this.repo.getAlsoBoughtItems(itemId, pagination);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'People also bought fetched',
-        data,
+        data: results,
+        meta: {
+          total,
+          currentPage: +pagination.page,
+          totalPages: Math.ceil(total / +pagination.limit),
+        },
       };
     } catch (error) {
       AppLogger.error('Failed to fetch also-bought items', error.stack);

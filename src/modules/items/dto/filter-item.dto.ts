@@ -53,3 +53,24 @@ export class SearchItemDto extends FilterItemDto implements IPagination {
   @IsNumber()
   limit: number;
 }
+
+export class RecommendationPaginationDto implements IPagination {
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  page: number;
+
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsNumber()
+  limit: number;
+
+  @IsNotEmpty()
+  @IsString()
+  sortBy: string;
+
+  @IsNotEmpty()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isAsc: boolean;
+}

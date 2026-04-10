@@ -1,7 +1,7 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateItemRepoDto } from './dto/create-item.dto';
 import { UpdateItemRepoDto } from './dto/update-item.dto';
-import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
+import { FilterItemDto, RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -317,21 +317,32 @@ export class ItemsRepository {
 
   /**
    * GET /items/:id/similar
-   * Items in the same category, sorted by rating DESC.
+   * Items in the same category — fully paginated.
    */
-  async getSimilarItems(itemId: string, categoryId: string, limit = 6) {
+  async getSimilarItems(
+    itemId: string,
+    categoryId: string,
+    pagination: RecommendationPaginationDto,
+  ): Promise<{ results: any[]; total: number }> {
     try {
-      return this.prisma.item.findMany({
-        where: {
-          id: { not: itemId },
-          categoryId,
-          isActive: true,
-          isAvailable: true,
-        },
-        orderBy: { rating: 'desc' },
-        take: limit,
-        select: RECOMMENDATION_SELECT,
-      });
+      const { page, limit, sortBy, isAsc } = pagination;
+      const where: Prisma.ItemWhereInput = {
+        id: { not: itemId },
+        categoryId,
+        isActive: true,
+        isAvailable: true,
+      };
+      const [results, total] = await Promise.all([
+        this.prisma.item.findMany({
+          where,
+          orderBy: { [sortBy]: isAsc ? 'asc' : 'desc' },
+          skip: (+page - 1) * +limit,
+          take: +limit,
+          select: RECOMMENDATION_SELECT,
+        }),
+        this.prisma.item.count({ where }),
+      ]);
+      return { results, total };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -344,24 +355,32 @@ export class ItemsRepository {
 
   /**
    * GET /items/:id/also-like
-   * Items within ±30% price range of the current item, sorted by rating DESC.
+   * Items within ±30% price range — fully paginated.
    */
-  async getAlsoLikeItems(itemId: string, price: number, limit = 6) {
+  async getAlsoLikeItems(
+    itemId: string,
+    price: number,
+    pagination: RecommendationPaginationDto,
+  ): Promise<{ results: any[]; total: number }> {
     try {
-      return this.prisma.item.findMany({
-        where: {
-          id: { not: itemId },
-          isActive: true,
-          isAvailable: true,
-          price: {
-            gte: price * 0.7,
-            lte: price * 1.3,
-          },
-        },
-        orderBy: { rating: 'desc' },
-        take: limit,
-        select: RECOMMENDATION_SELECT,
-      });
+      const { page, limit, sortBy, isAsc } = pagination;
+      const where: Prisma.ItemWhereInput = {
+        id: { not: itemId },
+        isActive: true,
+        isAvailable: true,
+        price: { gte: price * 0.7, lte: price * 1.3 },
+      };
+      const [results, total] = await Promise.all([
+        this.prisma.item.findMany({
+          where,
+          orderBy: { [sortBy]: isAsc ? 'asc' : 'desc' },
+          skip: (+page - 1) * +limit,
+          take: +limit,
+          select: RECOMMENDATION_SELECT,
+        }),
+        this.prisma.item.count({ where }),
+      ]);
+      return { results, total };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -374,46 +393,61 @@ export class ItemsRepository {
 
   /**
    * GET /items/:id/also-bought
-   * Items that were purchased in the same order as this item — co-purchase frequency.
+   * Co-purchased items ranked by order co-occurrence — fully paginated.
    * Uses raw SQL since Prisma doesn't support self-join aggregation natively.
    */
-  async getAlsoBoughtItems(itemId: string, limit = 6) {
+  async getAlsoBoughtItems(
+    itemId: string,
+    pagination: RecommendationPaginationDto,
+  ): Promise<{ results: any[]; total: number }> {
     try {
-      // Step 1: raw query to get co-purchased itemIds ranked by frequency
-      const rows = await this.prisma.$queryRaw<{ itemId: string; score: bigint }[]>(
-        Prisma.sql`
-          SELECT oi2.itemId, COUNT(*) AS score
-          FROM OrderItem oi1
-          JOIN OrderItem oi2
-            ON oi1.orderId = oi2.orderId
-            AND oi2.itemId != oi1.itemId
-          WHERE oi1.itemId = ${itemId}
-          GROUP BY oi2.itemId
-          ORDER BY score DESC
-          LIMIT ${limit}
-        `,
-      );
+      const { page, limit } = pagination;
+      const offset = (+page - 1) * +limit;
 
-      if (!rows.length) return [];
+      // Run paginated ranked rows + total count in parallel
+      const [rows, countRows] = await Promise.all([
+        this.prisma.$queryRaw<{ itemId: string; score: bigint }[]>(
+          Prisma.sql`
+            SELECT oi2.itemId, COUNT(*) AS score
+            FROM OrderItem oi1
+            JOIN OrderItem oi2
+              ON oi1.orderId = oi2.orderId
+              AND oi2.itemId != oi1.itemId
+            WHERE oi1.itemId = ${itemId}
+            GROUP BY oi2.itemId
+            ORDER BY score DESC
+            LIMIT ${+limit} OFFSET ${offset}
+          `,
+        ),
+        this.prisma.$queryRaw<{ total: bigint }[]>(
+          Prisma.sql`
+            SELECT COUNT(DISTINCT oi2.itemId) AS total
+            FROM OrderItem oi1
+            JOIN OrderItem oi2
+              ON oi1.orderId = oi2.orderId
+              AND oi2.itemId != oi1.itemId
+            WHERE oi1.itemId = ${itemId}
+          `,
+        ),
+      ]);
+
+      const total = Number(countRows[0]?.total ?? 0);
+
+      if (!rows.length) return { results: [], total };
 
       const itemIds = rows.map((r) => r.itemId);
 
-      // Step 2: fetch full item details in one query, preserving order
       const items = await this.prisma.item.findMany({
-        where: {
-          id: { in: itemIds },
-          isActive: true,
-          isAvailable: true,
-        },
+        where: { id: { in: itemIds }, isActive: true, isAvailable: true },
         select: RECOMMENDATION_SELECT,
       });
 
-      // Restore the co-purchase rank order
-      const ordered = itemIds
+      // Restore co-purchase rank order
+      const results = itemIds
         .map((id) => items.find((i) => i.id === id))
         .filter(Boolean);
 
-      return ordered;
+      return { results, total };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

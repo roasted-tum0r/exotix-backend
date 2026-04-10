@@ -297,11 +297,13 @@ export class ItemsService {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Similar items fetched',
-        data: results,
-        meta: {
-          total,
-          currentPage: +pagination.page,
-          totalPages: Math.ceil(total / +pagination.limit),
+        data: {
+          results,
+          meta: {
+            total,
+            currentPage: +pagination.page,
+            totalPages: Math.ceil(total / +pagination.limit),
+          },
         },
       };
     } catch (error) {
@@ -332,11 +334,13 @@ export class ItemsService {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Items you may like fetched',
-        data: results,
-        meta: {
-          total,
-          currentPage: +pagination.page,
-          totalPages: Math.ceil(total / +pagination.limit),
+        data: {
+          results,
+          meta: {
+            total,
+            currentPage: +pagination.page,
+            totalPages: Math.ceil(total / +pagination.limit),
+          },
         },
       };
     } catch (error) {
@@ -360,11 +364,13 @@ export class ItemsService {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'People also bought fetched',
-        data: results,
-        meta: {
-          total,
-          currentPage: +pagination.page,
-          totalPages: Math.ceil(total / +pagination.limit),
+        data: {
+          results,
+          meta: {
+            total,
+            currentPage: +pagination.page,
+            totalPages: Math.ceil(total / +pagination.limit),
+          },
         },
       };
     } catch (error) {

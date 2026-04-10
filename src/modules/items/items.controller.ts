@@ -150,4 +150,73 @@ export class ItemsController {
       });
     }
   }
+
+  /**
+   * GET /items/:id/similar
+   * Publicly fetch items in the same category as the given item.
+   * Section label: "Similar Items"
+   */
+  @Public('similarItems')
+  @Get('/details/:id/similar')
+  async getSimilarItems(
+    @Param('id') id: string,
+    @Query('limit') limit?: number,
+  ) {
+    try {
+      return await this.service.getSimilarItems(id, limit ? +limit : 6);
+    } catch (error) {
+      AppLogger.error(`Failed to fetch similar items`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch similar items',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-like
+   * Publicly fetch items in a ±30% price range.
+   * Section label: "Items You May Like"
+   */
+  @Public('alsoLikeItems')
+  @Get('/details/:id/also-like')
+  async getAlsoLikeItems(
+    @Param('id') id: string,
+    @Query('limit') limit?: number,
+  ) {
+    try {
+      return await this.service.getAlsoLikeItems(id, limit ? +limit : 6);
+    } catch (error) {
+      AppLogger.error(`Failed to fetch also-like items`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch items you may like',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-bought
+   * Publicly fetch items co-purchased with the given item, ranked by frequency.
+   * Section label: "People Also Bought"
+   */
+  @Public('alsoBoughtItems')
+  @Get('/details/:id/also-bought')
+  async getAlsoBoughtItems(
+    @Param('id') id: string,
+    @Query('limit') limit?: number,
+  ) {
+    try {
+      return await this.service.getAlsoBoughtItems(id, limit ? +limit : 6);
+    } catch (error) {
+      AppLogger.error(`Failed to fetch also-bought items`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch people also bought',
+      });
+    }
+  }
 }

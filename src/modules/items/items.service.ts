@@ -13,6 +13,7 @@ import { FilterItemDto, SearchItemDto } from './dto/filter-item.dto';
 import { Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
+
 @Injectable()
 export class ItemsService {
   constructor(private readonly repo: ItemsRepository) { }
@@ -276,5 +277,88 @@ export class ItemsService {
     }
 
     return where;
+  }
+
+  /**
+   * GET /items/:id/similar
+   * Same-category items sorted by rating.
+   */
+  async getSimilarItems(itemId: string, limit = 6) {
+    try {
+      const item = await this.repo.findOne(itemId);
+      if (!item)
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: 'Item not found',
+        });
+      const data = await this.repo.getSimilarItems(itemId, item.categoryId, limit);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Similar items fetched',
+        data,
+      };
+    } catch (error) {
+      AppLogger.error('Failed to fetch similar items', error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch similar items',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-like
+   * Items in a ±30% price range sorted by rating.
+   */
+  async getAlsoLikeItems(itemId: string, limit = 6) {
+    try {
+      const item = await this.repo.findOne(itemId);
+      if (!item)
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: 'Item not found',
+        });
+      const data = await this.repo.getAlsoLikeItems(itemId, item.price, limit);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Items you may like fetched',
+        data,
+      };
+    } catch (error) {
+      AppLogger.error('Failed to fetch also-like items', error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch items you may like',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-bought
+   * Co-purchased items ranked by order co-occurrence frequency.
+   */
+  async getAlsoBoughtItems(itemId: string, limit = 6) {
+    try {
+      const data = await this.repo.getAlsoBoughtItems(itemId, limit);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'People also bought fetched',
+        data,
+      };
+    } catch (error) {
+      AppLogger.error('Failed to fetch also-bought items', error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch people also bought',
+      });
+    }
   }
 }

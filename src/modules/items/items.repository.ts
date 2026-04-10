@@ -6,6 +6,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
+const RECOMMENDATION_SELECT = {
+  id: true,
+  name: true,
+  image: true,
+  price: true,
+  rating: true,
+  isAvailable: true,
+  offer: true,
+  category: { select: { id: true, name: true } },
+};
+
 @Injectable()
 export class ItemsRepository {
   constructor(private prisma: PrismaService) {}
@@ -300,6 +311,115 @@ export class ItemsRepository {
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
         message: `Something went wrong.`,
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/similar
+   * Items in the same category, sorted by rating DESC.
+   */
+  async getSimilarItems(itemId: string, categoryId: string, limit = 6) {
+    try {
+      return this.prisma.item.findMany({
+        where: {
+          id: { not: itemId },
+          categoryId,
+          isActive: true,
+          isAvailable: true,
+        },
+        orderBy: { rating: 'desc' },
+        take: limit,
+        select: RECOMMENDATION_SELECT,
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-like
+   * Items within ±30% price range of the current item, sorted by rating DESC.
+   */
+  async getAlsoLikeItems(itemId: string, price: number, limit = 6) {
+    try {
+      return this.prisma.item.findMany({
+        where: {
+          id: { not: itemId },
+          isActive: true,
+          isAvailable: true,
+          price: {
+            gte: price * 0.7,
+            lte: price * 1.3,
+          },
+        },
+        orderBy: { rating: 'desc' },
+        take: limit,
+        select: RECOMMENDATION_SELECT,
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
+  /**
+   * GET /items/:id/also-bought
+   * Items that were purchased in the same order as this item — co-purchase frequency.
+   * Uses raw SQL since Prisma doesn't support self-join aggregation natively.
+   */
+  async getAlsoBoughtItems(itemId: string, limit = 6) {
+    try {
+      // Step 1: raw query to get co-purchased itemIds ranked by frequency
+      const rows = await this.prisma.$queryRaw<{ itemId: string; score: bigint }[]>(
+        Prisma.sql`
+          SELECT oi2.itemId, COUNT(*) AS score
+          FROM OrderItem oi1
+          JOIN OrderItem oi2
+            ON oi1.orderId = oi2.orderId
+            AND oi2.itemId != oi1.itemId
+          WHERE oi1.itemId = ${itemId}
+          GROUP BY oi2.itemId
+          ORDER BY score DESC
+          LIMIT ${limit}
+        `,
+      );
+
+      if (!rows.length) return [];
+
+      const itemIds = rows.map((r) => r.itemId);
+
+      // Step 2: fetch full item details in one query, preserving order
+      const items = await this.prisma.item.findMany({
+        where: {
+          id: { in: itemIds },
+          isActive: true,
+          isAvailable: true,
+        },
+        select: RECOMMENDATION_SELECT,
+      });
+
+      // Restore the co-purchase rank order
+      const ordered = itemIds
+        .map((id) => items.find((i) => i.id === id))
+        .filter(Boolean);
+
+      return ordered;
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
       });
     }
   }

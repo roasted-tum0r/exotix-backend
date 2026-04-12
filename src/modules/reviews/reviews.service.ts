@@ -36,25 +36,25 @@ export class ReviewsService {
       }
 
       // 2. Verified purchase check
-      if (dto.reviewType === ReviewType.ITEM) {
-        const purchased = await this.repo.hasUserPurchasedItem(userId, dto.itemId!);
-        if (!purchased) {
-          throw new ForbiddenException({
-            statusCode: HttpStatus.FORBIDDEN,
-            error: true,
-            message: 'You can only review items you have purchased and received.',
-          });
-        }
-      } else {
-        const ordered = await this.repo.hasUserOrderedAtBranch(userId, dto.branchId!);
-        if (!ordered) {
-          throw new ForbiddenException({
-            statusCode: HttpStatus.FORBIDDEN,
-            error: true,
-            message: 'You can only review a branch you have ordered from and received a delivery.',
-          });
-        }
-      }
+      // if (dto.reviewType === ReviewType.ITEM) {
+      //   const purchased = await this.repo.hasUserPurchasedItem(userId, dto.itemId!);
+      //   if (!purchased) {
+      //     throw new ForbiddenException({
+      //       statusCode: HttpStatus.FORBIDDEN,
+      //       error: true,
+      //       message: 'You can only review items you have purchased and received.',
+      //     });
+      //   }
+      // } else {
+      //   const ordered = await this.repo.hasUserOrderedAtBranch(userId, dto.branchId!);
+      //   if (!ordered) {
+      //     throw new ForbiddenException({
+      //       statusCode: HttpStatus.FORBIDDEN,
+      //       error: true,
+      //       message: 'You can only review a branch you have ordered from and received a delivery.',
+      //     });
+      //   }
+      // }
 
       // 3. One review per target check
       const existing = await this.repo.findExisting(userId, dto.itemId, dto.branchId);
@@ -133,26 +133,27 @@ export class ReviewsService {
         });
       }
 
-      // 2. Verified purchase check (re-validate on update too)
-      if (review.itemId) {
-        const purchased = await this.repo.hasUserPurchasedItem(userId, review.itemId);
-        if (!purchased) {
-          throw new ForbiddenException({
-            statusCode: HttpStatus.FORBIDDEN,
-            error: true,
-            message: 'You can only edit reviews for items you have purchased.',
-          });
-        }
-      } else if (review.branchId) {
-        const ordered = await this.repo.hasUserOrderedAtBranch(userId, review.branchId);
-        if (!ordered) {
-          throw new ForbiddenException({
-            statusCode: HttpStatus.FORBIDDEN,
-            error: true,
-            message: 'You can only edit reviews for branches you have ordered from.',
-          });
-        }
-      }
+      // 2. Verified purchase check on update (re-validate)
+      // TODO: Re-enable purchase guard before production
+      // if (review.itemId) {
+      //   const purchased = await this.repo.hasUserPurchasedItem(userId, review.itemId);
+      //   if (!purchased) {
+      //     throw new ForbiddenException({
+      //       statusCode: HttpStatus.FORBIDDEN,
+      //       error: true,
+      //       message: 'You can only edit reviews for items you have purchased.',
+      //     });
+      //   }
+      // } else if (review.branchId) {
+      //   const ordered = await this.repo.hasUserOrderedAtBranch(userId, review.branchId);
+      //   if (!ordered) {
+      //     throw new ForbiddenException({
+      //       statusCode: HttpStatus.FORBIDDEN,
+      //       error: true,
+      //       message: 'You can only edit reviews for branches you have ordered from.',
+      //     });
+      //   }
+      // }
 
       const updated = await this.repo.update(reviewId, dto);
       return {

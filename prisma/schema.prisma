@@ -56,6 +56,13 @@ enum SubscriptionSource {
   CAMPAIGN
   MANUAL
 }
+enum ImageOwnerType {
+  USER
+  ITEM
+  BRANCH
+  REVIEW
+}
+
 
 
 model User {
@@ -363,21 +370,22 @@ model ContactUs{
 }
 
 model Image {
-  id         String      @id @default(uuid())
-  imageUrl   String
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String
-
-  item       Item?    @relation(fields: [itemId], references: [id])
-  itemId     String?
-
-  branch     Branch?  @relation(fields: [branchId], references: [id])
-  branchId   String?
-
-  review     Review?  @relation(fields: [reviewId], references: [id])
-  reviewId   String?
-
-  uploadedAt DateTime @default(now())
+  id          String         @id @default(uuid())
+  imageUrl    String         @db.Text
+  ownerType   ImageOwnerType  // ← tells the API which FK is active
+  userId      String?
+  user        User?          @relation(fields: [userId], references: [id])
+  itemId      String?
+  item        Item?          @relation(fields: [itemId], references: [id])
+  branchId    String?
+  branch      Branch?        @relation(fields: [branchId], references: [id])
+  reviewId    String?
+  review      Review?        @relation(fields: [reviewId], references: [id])
+  uploadedAt  DateTime       @default(now())
+  @@index([ownerType, userId])     // fetch all images for a user instantly
+  @@index([ownerType, itemId])     // fetch all images for an item instantly
+  @@index([ownerType, branchId])
+  @@index([ownerType, reviewId])
 }
 
 model Review {

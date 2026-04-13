@@ -23,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
 import { NewsletterSubsModule } from './modules/newsletter-subs/newsletter-subs.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { UploadModule } from './modules/image-upload/upload.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     NewsletterSubsModule,
     WishlistModule,
     ReviewsModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [

@@ -1,6 +1,8 @@
 import {
   Controller,
   Post,
+  Delete,
+  Param,
   UploadedFile,
   UseInterceptors,
   BadRequestException,
@@ -101,6 +103,43 @@ export class UploadController {
         {
           success: false,
           message: 'File upload failed. Please try again.',
+          detail: error?.message ?? 'Unknown Cloudinary error',
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
+
+  /**
+   * DELETE /upload/:publicId
+   * Permanently removes a file from Cloudinary.
+   * Pass the public_id exactly as returned by the upload endpoint.
+   * Note: forward-slashes in public_id must be URL-encoded (%2F).
+   *
+   * Example: DELETE /upload/review%2Fxkd92pqm7abc
+   */
+  @Delete(':publicId')
+  async deleteFile(@Param('publicId') publicId: string) {
+    try {
+      const result = await this.cloudinaryService.deleteImage(publicId);
+
+      if (result.result !== 'ok' && result.result !== 'not found') {
+        throw new Error(`Cloudinary responded with: ${result.result}`);
+      }
+
+      return {
+        success: true,
+        message:
+          result.result === 'not found'
+            ? 'File not found in Cloudinary — may have already been deleted.'
+            : 'File deleted successfully.',
+        public_id: publicId,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          message: 'File deletion failed. Please try again.',
           detail: error?.message ?? 'Unknown Cloudinary error',
         },
         HttpStatus.BAD_GATEWAY,

@@ -47,7 +47,7 @@ export class ItemsRepository {
           category: true,
           images: true,
           categoryId: true,
-          reviews: true,
+          // reviews: true,
           rating: true,
           isAvailable: true,
           price: true,

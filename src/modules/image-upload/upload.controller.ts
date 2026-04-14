@@ -3,14 +3,14 @@ import {
   Post,
   Delete,
   Param,
-  UploadedFile,
+  UploadedFiles,
   UseInterceptors,
   BadRequestException,
   Body,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 import { UploadImageDto } from './dto/upload-image.dto';
@@ -43,6 +43,9 @@ const ALLOWED_MIMETYPES = new Set([
   'video/mp2t',        // .ts
 ]);
 
+/** Maximum number of files allowed in one request */
+const MAX_FILES = 10;
+
 @Controller('upload')
 export class UploadController {
   constructor(private readonly cloudinaryService: CloudinaryService) {}
@@ -50,19 +53,22 @@ export class UploadController {
   /**
    * POST /upload
    * Multipart form-data fields:
-   *   - file      : the file binary (any image or video format)
+   *   - files[]   : 1–10 file binaries (any image or video format)
    *   - ownerType : ImageOwnerType enum value (USER | ITEM | BRANCH | REVIEW)
    *
-   * Returns the Cloudinary secure_url and public_id.
-   * The file is stored under /<ownerType_lowercase>/ and tagged 'temp'.
+   * Returns an array of { url, public_id } — one entry per uploaded file.
+   * Each file is stored under /<ownerType_lowercase>/ and tagged 'temp'.
    * After saving the related entity, call CloudinaryService.updateImageTag()
    * with the new entity's PK to replace the 'temp' tag.
    */
   @Post()
   @UseInterceptors(
-    FileInterceptor('file', {
+    FilesInterceptor('files', MAX_FILES, {
       storage: multer.memoryStorage(),
-      limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB max — images + videos combined
+      limits: {
+        fileSize: 20 * 1024 * 1024,   // 20 MB per file
+        files: MAX_FILES,              // hard cap enforced by multer as well
+      },
       fileFilter: (_req, file, cb) => {
         if (ALLOWED_MIMETYPES.has(file.mimetype)) {
           cb(null, true);
@@ -78,25 +84,33 @@ export class UploadController {
       },
     }),
   )
-  async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
+  async uploadFiles(
+    @UploadedFiles() files: Express.Multer.File[],
     @Body() body: UploadImageDto,
   ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded. Send at least one file in the "files" field.');
     }
 
     try {
-      const result = await this.cloudinaryService.uploadMedia(
-        file.buffer,
-        file.mimetype,
-        body.ownerType,
+      // Upload all files in parallel — fail fast on any single error
+      const results = await Promise.all(
+        files.map((file) =>
+          this.cloudinaryService.uploadMedia(
+            file.buffer,
+            file.mimetype,
+            body.ownerType,
+          ),
+        ),
       );
 
       return {
         success: true,
-        url: result.secure_url,
-        public_id: result.public_id,
+        count: results.length,
+        files: results.map((r) => ({
+          url: r.secure_url,
+          public_id: r.public_id,
+        })),
       };
     } catch (error: any) {
       throw new HttpException(

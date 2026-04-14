@@ -2,21 +2,25 @@ import { Global, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ImageOwnerType } from "@prisma/client";
 import { Images } from "../reviews/dto/review.dto";
+import { CloudinaryService } from "src/config/cloudinary/cloudinary.service";
 @Global()
 @Injectable()
 export class UploadRepo {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService, private readonly cloudinaryService: CloudinaryService) { }
     async addImages(refId: string, images: Images[], ownerType: ImageOwnerType) {
         if (!refId) {
             throw new Error("refId is required");
         }
         const ownerField = this.getOwnerField(ownerType);
-        const data = images.map((image) => ({
-            imageUrl: image.url,
-            publicId: image.publicId,
-            ownerType,
-            [ownerField]: refId,
-        }));
+        const data = images.map((image) => {
+            this.cloudinaryService.updateImageTag(image.publicId, refId);
+            return {
+                imageUrl: image.url,
+                publicId: image.publicId,
+                ownerType,
+                [ownerField]: refId,
+            }
+        });
 
         return this.prisma.image.createMany({ data });
     }

@@ -9,6 +9,8 @@ import {
   Min,
   IsBoolean,
   IsNumber,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { IPagination } from 'src/common/interfaces/app.interface';
@@ -47,6 +49,11 @@ export class CreateReviewDto {
   @Min(1)
   @Max(5)
   rating: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  images?: Images[];
 }
 
 export class UpdateReviewDto {
@@ -80,4 +87,8 @@ export class ListReviewsDto implements IPagination {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isAsc: boolean;
+}
+export interface Images {
+  publicId: string;
+  url: string;
 }

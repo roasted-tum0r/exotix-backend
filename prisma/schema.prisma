@@ -372,6 +372,7 @@ model ContactUs{
 model Image {
   id          String         @id @default(uuid())
   imageUrl    String         @db.Text
+  publicId    String         @unique
   ownerType   ImageOwnerType  // ← tells the API which FK is active
   userId      String?
   user        User?          @relation(fields: [userId], references: [id])

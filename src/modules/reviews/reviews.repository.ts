@@ -6,11 +6,11 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ListReviewsDto } from './dto/review.dto';
-import { Prisma } from '@prisma/client';
+import { ImageOwnerType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ReviewsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   // ─── Read ────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ export class ReviewsRepository {
             user: {
               select: { id: true, firstname: true, lastname: true },
             },
-            images: { select: { id: true, imageUrl: true } },
+            images: { select: { ownerType: true, id: true, imageUrl: true }, where: { ownerType: ImageOwnerType.REVIEW } },
           },
         }),
         this.prisma.review.count({ where }),

@@ -10,10 +10,12 @@ import {
 import { ReviewsRepository } from './reviews.repository';
 import { CreateReviewDto, ListReviewsDto, ReviewType, UpdateReviewDto } from './dto/review.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { UploadRepo } from '../image-upload/upload.repo';
+import { ImageOwnerType } from '@prisma/client';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly repo: ReviewsRepository) {}
+  constructor(private readonly repo: ReviewsRepository, private readonly uploadRepo: UploadRepo) { }
 
   // ─── POST /reviews ────────────────────────────────────────────────────
 
@@ -57,14 +59,14 @@ export class ReviewsService {
       // }
 
       // 3. One review per target check
-      const existing = await this.repo.findExisting(userId, dto.itemId, dto.branchId);
-      if (existing) {
-        throw new BadRequestException({
-          statusCode: HttpStatus.BAD_REQUEST,
-          error: true,
-          message: 'You have already submitted a review for this item/branch. Use PATCH to update it.',
-        });
-      }
+      // const existing = await this.repo.findExisting(userId, dto.itemId, dto.branchId);
+      // if (existing) {
+      //   throw new BadRequestException({
+      //     statusCode: HttpStatus.BAD_REQUEST,
+      //     error: true,
+      //     message: 'You have already submitted a review for this item/branch. Use PATCH to update it.',
+      //   });
+      // }
 
       // 4. Create
       const review = await this.repo.create({
@@ -74,6 +76,9 @@ export class ReviewsService {
         itemId: dto.itemId,
         branchId: dto.branchId,
       });
+      if (dto.images?.length) {
+        await this.uploadRepo.addImages(review.id, dto.images, ImageOwnerType.REVIEW);
+      }
 
       return {
         statusCode: HttpStatus.CREATED,

@@ -15,6 +15,18 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { IPagination } from 'src/common/interfaces/app.interface';
 
+/** Validated image shape used in create / update review DTOs. */
+export class ImagesDto {
+  @IsString()
+  publicId: string;
+
+  @IsString()
+  url: string;
+}
+
+/** Type alias kept for backward compatibility across services/repos. */
+export type Images = ImagesDto;
+
 export enum ReviewType {
   ITEM = 'ITEM',
   BRANCH = 'BRANCH',
@@ -53,7 +65,8 @@ export class CreateReviewDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  images?: Images[];
+  @Type(() => ImagesDto)
+  images?: ImagesDto[];
 }
 
 export class UpdateReviewDto {
@@ -66,6 +79,19 @@ export class UpdateReviewDto {
   @Min(1)
   @Max(5)
   rating?: number;
+
+  /** publicIds of existing images to remove from Cloudinary + the metadata table. */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  imagesToDelete?: string[];
+
+  /** Newly uploaded images to persist in the metadata table. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImagesDto)
+  imagesToAdd?: Images[];
 }
 
 export class ListReviewsDto implements IPagination {
@@ -87,8 +113,4 @@ export class ListReviewsDto implements IPagination {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isAsc: boolean;
-}
-export interface Images {
-  publicId: string;
-  url: string;
 }

@@ -8,14 +8,19 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReviewsRepository } from './reviews.repository';
-import { CreateReviewDto, ListReviewsDto, ReviewType, UpdateReviewDto } from './dto/review.dto';
+import { CreateReviewDto, Images, ListReviewsDto, ReviewType, UpdateReviewDto } from './dto/review.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { UploadRepo } from '../image-upload/upload.repo';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 import { ImageOwnerType } from '@prisma/client';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly repo: ReviewsRepository, private readonly uploadRepo: UploadRepo) { }
+  constructor(
+    private readonly repo: ReviewsRepository,
+    private readonly uploadRepo: UploadRepo,
+    private readonly cloudinaryService: CloudinaryService,
+  ) { }
 
   // ─── POST /reviews ────────────────────────────────────────────────────
 
@@ -138,29 +143,24 @@ export class ReviewsService {
         });
       }
 
-      // 2. Verified purchase check on update (re-validate)
-      // TODO: Re-enable purchase guard before production
-      // if (review.itemId) {
-      //   const purchased = await this.repo.hasUserPurchasedItem(userId, review.itemId);
-      //   if (!purchased) {
-      //     throw new ForbiddenException({
-      //       statusCode: HttpStatus.FORBIDDEN,
-      //       error: true,
-      //       message: 'You can only edit reviews for items you have purchased.',
-      //     });
-      //   }
-      // } else if (review.branchId) {
-      //   const ordered = await this.repo.hasUserOrderedAtBranch(userId, review.branchId);
-      //   if (!ordered) {
-      //     throw new ForbiddenException({
-      //       statusCode: HttpStatus.FORBIDDEN,
-      //       error: true,
-      //       message: 'You can only edit reviews for branches you have ordered from.',
-      //     });
-      //   }
-      // }
+      // 2. Image cleanup — remove any images the client wants purged
+      if (dto.imagesToDelete?.length) {
+        await Promise.all(
+          dto.imagesToDelete.map((id) => this.cloudinaryService.deleteImage(id)),
+        );
+        await this.uploadRepo.deleteImages(dto.imagesToDelete);
+      }
 
-      const updated = await this.repo.update(reviewId, dto);
+      // 3. Image add — persist newly uploaded images
+      if (dto.imagesToAdd?.length) {
+        await this.uploadRepo.addImages(reviewId, dto.imagesToAdd as Images[], ImageOwnerType.REVIEW);
+      }
+
+      // 4. Update review fields (content / rating)
+      const updated = await this.repo.update(reviewId, {
+        content: dto.content,
+        rating: dto.rating,
+      });
       return {
         statusCode: HttpStatus.OK,
         error: false,
@@ -181,7 +181,7 @@ export class ReviewsService {
 
   async remove(userId: string, reviewId: string) {
     try {
-      // Only ownership check — no purchase gate on delete
+      // 1. Ownership check
       const review = await this.repo.findById(reviewId);
       if (!review) {
         throw new NotFoundException({
@@ -198,6 +198,17 @@ export class ReviewsService {
         });
       }
 
+      // 2. Image cleanup — purge from Cloudinary then from the metadata table
+      const linkedImages = await this.uploadRepo.getImagesByReviewId(reviewId);
+      if (linkedImages.length) {
+        const publicIds = linkedImages.map((img) => img.publicId);
+        await Promise.all(
+          publicIds.map((id) => this.cloudinaryService.deleteImage(id)),
+        );
+        await this.uploadRepo.deleteImages(publicIds);
+      }
+
+      // 3. Delete the review row
       await this.repo.remove(reviewId);
       return {
         statusCode: HttpStatus.OK,

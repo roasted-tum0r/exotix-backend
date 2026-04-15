@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Delete,
-  Param,
   UploadedFiles,
   UseInterceptors,
   BadRequestException,
@@ -14,6 +13,8 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 import { UploadImageDto } from './dto/upload-image.dto';
+import { DeleteImagesDto } from './dto/delete-images.dto';
+import { UploadRepo } from './upload.repo';
 
 /** Safe image & video mimetypes accepted for upload */
 const ALLOWED_MIMETYPES = new Set([
@@ -48,7 +49,10 @@ const MAX_FILES = 10;
 
 @Controller('upload')
 export class UploadController {
-  constructor(private readonly cloudinaryService: CloudinaryService) {}
+  constructor(
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly uploadRepo: UploadRepo,
+  ) {}
 
   /**
    * POST /upload
@@ -125,36 +129,46 @@ export class UploadController {
   }
 
   /**
-   * DELETE /upload/:publicId
-   * Permanently removes a file from Cloudinary.
-   * Pass the public_id exactly as returned by the upload endpoint.
-   * Note: forward-slashes in public_id must be URL-encoded (%2F).
+   * DELETE /upload
+   * Batch-delete files from both Cloudinary and the Image metadata table.
    *
-   * Example: DELETE /upload/review%2Fxkd92pqm7abc
+   * Body: { publicIds: string[] }
+   *
+   * Each publicId is deleted from Cloudinary in parallel, then all rows
+   * are purged from the Image table in a single query.
+   * Returns a summary with counts and any publicIds that were not found
+   * in Cloudinary (already gone / never uploaded).
    */
-  @Delete(':publicId')
-  async deleteFile(@Param('publicId') publicId: string) {
-    try {
-      const result = await this.cloudinaryService.deleteImage(publicId);
+  @Delete()
+  async deleteFiles(@Body() body: DeleteImagesDto) {
+    const { publicIds } = body;
 
-      if (result.result !== 'ok' && result.result !== 'not found') {
-        throw new Error(`Cloudinary responded with: ${result.result}`);
-      }
+    try {
+      // ── 1. Delete from Cloudinary (parallel, fail-fast) ────────────────
+      const cloudinaryResults = await Promise.all(
+        publicIds.map((id) => this.cloudinaryService.deleteImage(id)),
+      );
+
+      const notFoundInCloudinary = publicIds.filter(
+        (_, i) => cloudinaryResults[i]?.result === 'not found',
+      );
+      const deletedFromCloudinary = publicIds.length - notFoundInCloudinary.length;
+
+      // ── 2. Delete rows from the Image metadata table ───────────────────
+      const { count: deletedFromDb } = await this.uploadRepo.deleteImages(publicIds);
 
       return {
         success: true,
-        message:
-          result.result === 'not found'
-            ? 'File not found in Cloudinary — may have already been deleted.'
-            : 'File deleted successfully.',
-        public_id: publicId,
+        deletedFromCloudinary,
+        deletedFromDb,
+        notFoundInCloudinary,
       };
     } catch (error: any) {
       throw new HttpException(
         {
           success: false,
           message: 'File deletion failed. Please try again.',
-          detail: error?.message ?? 'Unknown Cloudinary error',
+          detail: error?.message ?? 'Unknown error',
         },
         HttpStatus.BAD_GATEWAY,
       );

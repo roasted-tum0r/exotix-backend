@@ -199,7 +199,7 @@ export class ReviewsService {
       }
 
       // 2. Image cleanup — purge from Cloudinary then from the metadata table
-      const linkedImages = await this.uploadRepo.getImagesByReviewId(reviewId);
+      const linkedImages = await this.uploadRepo.getImagesById(reviewId, ImageOwnerType.REVIEW);
       if (linkedImages.length) {
         const publicIds = linkedImages.map((img) => img.publicId);
         await Promise.all(

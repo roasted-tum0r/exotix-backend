@@ -35,9 +35,13 @@ export class UploadRepo {
     }
 
     /** Returns the publicId list for all images linked to a review. */
-    async getImagesByReviewId(reviewId: string): Promise<{ publicId: string }[]> {
+    async getImagesById(refId: string, ownerType: ImageOwnerType): Promise<{ publicId: string }[]> {
+        if (!refId) {
+            throw new Error("refId is required");
+        }
+        const ownerField = this.getOwnerField(ownerType);
         return this.prisma.image.findMany({
-            where: { reviewId },
+            where: { [ownerField]: refId },
             select: { publicId: true },
         });
     }

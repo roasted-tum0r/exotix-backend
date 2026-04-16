@@ -73,7 +73,7 @@ export class ReviewsRepository {
             user: {
               select: { id: true, firstname: true, lastname: true },
             },
-            images: { select: { ownerType: true, id: true, imageUrl: true }, where: { ownerType: ImageOwnerType.REVIEW } },
+            images: { select: { ownerType: true, id: true, imageUrl: true, publicId:true }, where: { ownerType: ImageOwnerType.REVIEW } },
           },
         }),
         this.prisma.review.count({ where }),

@@ -145,9 +145,10 @@ export class ReviewsService {
 
       // 2. Image cleanup — remove any images the client wants purged
       if (dto.imagesToDelete?.length) {
-        await Promise.all(
-          dto.imagesToDelete.map((id) => this.cloudinaryService.deleteImage(id)),
-        );
+        const cloudinaryresults =
+          await Promise.all(
+            dto.imagesToDelete.map((id) => this.cloudinaryService.deleteImage(id)),
+          );
         await this.uploadRepo.deleteImages(dto.imagesToDelete);
       }
 

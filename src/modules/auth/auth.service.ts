@@ -374,8 +374,23 @@ export class AuthService {
     return `This action returns all auth`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+  async findOne(id: string) {
+    try {
+      const user = await this.userRepository.findByUserId(id);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'User found successfully!',
+        data: user,
+      };
+    } catch (error) {
+      AppLogger.error(`Failed search items`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Something went wrong while finding user',
+      });
+    }
   }
 
   update(id: number, updateAuthDto: UpdateAuthDto) {

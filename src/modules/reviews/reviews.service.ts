@@ -145,10 +145,16 @@ export class ReviewsService {
 
       // 2. Image cleanup — remove any images the client wants purged
       if (dto.imagesToDelete?.length) {
-        const cloudinaryresults =
-          await Promise.all(
-            dto.imagesToDelete.map((id) => this.cloudinaryService.deleteImage(id)),
-          );
+        const cloudinaryResults = await Promise.allSettled(
+          dto.imagesToDelete.map((id) => this.cloudinaryService.deleteImage(id)),
+        );
+        const failedDeletions = cloudinaryResults.filter((result) => result.status === 'rejected');
+        if (failedDeletions.length > 0) {
+          throw new InternalServerErrorException({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: 'Failed to delete some images.',
+          });
+        }
         await this.uploadRepo.deleteImages(dto.imagesToDelete);
       }
 

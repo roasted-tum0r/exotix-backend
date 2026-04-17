@@ -7,9 +7,13 @@ import {
   MaxLength,
   MinLength,
   IsStrongPassword,
+  IsOptional,
+  ValidateNested,
 } from 'class-validator';
 import { UserRole } from '@prisma/client'; // ✅ Prisma enum
 import { LoginType, RegistrationAs } from 'src/config/enums/authuser-enums';
+import { Type } from 'class-transformer';
+import { ImagesDto } from 'src/modules/reviews/dto/review.dto';
 
 export class CreateAuthUserDto {
   @IsNotEmpty()
@@ -32,6 +36,10 @@ export class CreateAuthUserDto {
 
   @IsNotEmpty()
   role: UserRole; // 'MANAGER', 'WAITER', etc. – consider using an enum if fixed roles
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ImagesDto)
+  image?: ImagesDto;
 }
 export class LoginWithOtpDto {
   @IsNotEmpty()

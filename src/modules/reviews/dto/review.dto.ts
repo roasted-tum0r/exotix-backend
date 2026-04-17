@@ -24,9 +24,6 @@ export class ImagesDto {
   url: string;
 }
 
-/** Type alias kept for backward compatibility across services/repos. */
-export type Images = ImagesDto;
-
 export enum ReviewType {
   ITEM = 'ITEM',
   BRANCH = 'BRANCH',
@@ -91,7 +88,7 @@ export class UpdateReviewDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ImagesDto)
-  imagesToAdd?: Images[];
+  imagesToAdd?: ImagesDto[];
 }
 
 export class ListReviewsDto implements IPagination {

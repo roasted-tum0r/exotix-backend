@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ReviewsRepository } from './reviews.repository';
-import { CreateReviewDto, Images, ListReviewsDto, ReviewType, UpdateReviewDto } from './dto/review.dto';
+import { CreateReviewDto, ImagesDto, ListReviewsDto, ReviewType, UpdateReviewDto } from './dto/review.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { UploadRepo } from '../image-upload/upload.repo';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
@@ -160,7 +160,7 @@ export class ReviewsService {
 
       // 3. Image add — persist newly uploaded images
       if (dto.imagesToAdd?.length) {
-        await this.uploadRepo.addImages(reviewId, dto.imagesToAdd as Images[], ImageOwnerType.REVIEW);
+        await this.uploadRepo.addImages(reviewId, dto.imagesToAdd, ImageOwnerType.REVIEW);
       }
 
       // 4. Update review fields (content / rating)

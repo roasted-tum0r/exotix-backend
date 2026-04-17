@@ -23,6 +23,9 @@ import { MailService } from 'src/services/mail/mailservice.service';
 import { RedisService } from 'src/services/redis/redis.service';
 import { Templates } from 'src/config/templates/template';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { UploadRepo } from '../image-upload/upload.repo';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
+import { ImageOwnerType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +36,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
     private readonly mailService: MailService,
+    private readonly uploadRepo: UploadRepo,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
   async postNewUser(body: CreateAuthUserDto) {
     try {
@@ -75,6 +80,11 @@ export class AuthService {
           position: `${registrationPurpose}`,
         });
       }
+      // Persist avatar if provided
+      if (body.image) {
+        await this.uploadRepo.addImages(user.id, [body.image], ImageOwnerType.USER);
+      }
+
       const payload = { sub: user.id, role: user.role, email: user.email };
       const accessToken = this.jwtService.sign(payload);
       await this.mailService.sendMail(
@@ -243,6 +253,8 @@ export class AuthService {
           await this.userRepository.updateUserVerified(user.id);
         }
         const jwtToken = await this.jwtService.signAsync(jwtPayload);
+        // Fetch user images to include in login response
+        const userImages = await this.uploadRepo.getImagesById(user.id, ImageOwnerType.USER);
         return {
           statusCode: HttpStatus.OK,
           error: false,
@@ -256,6 +268,7 @@ export class AuthService {
             role: user.role,
             createdat: user.createdAt,
             accesstoken: jwtToken,
+            images: userImages,
           },
         };
       }
@@ -282,14 +295,28 @@ export class AuthService {
           message: `Access denied: A person cannot update info of another.`,
         });
       }
-      const updatedUser = await this.userRepository.updateUserById(
-        id,
-        createAuthUserDto,
-      );
+      // ── Image handling (mirrors review update pattern) ──────────────────
+      // 1. Delete old avatar first if client requests it
+      if (createAuthUserDto.deletedImagePublicId) {
+        await this.cloudinaryService.deleteImage(createAuthUserDto.deletedImagePublicId);
+        await this.uploadRepo.deleteImages([createAuthUserDto.deletedImagePublicId]);
+      }
+      // 2. Persist new avatar if supplied
+      if (createAuthUserDto.image) {
+        await this.uploadRepo.addImages(id, [createAuthUserDto.image], ImageOwnerType.USER);
+      }
+      // ────────────────────────────────────────────────────────────────────
+
+      // Strip image fields before passing to Prisma (they're not User columns)
+      const { image, deletedImagePublicId, ...userFields } = createAuthUserDto;
+      const updatedUser = await this.userRepository.updateUserById(id, userFields);
+
+      // Return updated images array alongside the user
+      const updatedImages = await this.uploadRepo.getImagesById(id, ImageOwnerType.USER);
       return {
         statusCode: HttpStatus.OK,
         message: 'User info updated successfully',
-        data: updatedUser,
+        data: { ...updatedUser, images: updatedImages },
       };
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);

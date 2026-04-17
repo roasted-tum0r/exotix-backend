@@ -1,14 +1,31 @@
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma, User } from '@prisma/client';
+import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateAuthUserDto } from './dto/create-auth.dto';
 @Injectable()
 export class UserRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
   async findByUserId(userId: string) {
     try {
       return await this.prisma.user.findUnique({
         where: { id: userId, isActive: true },
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          phone: true,
+          email: true,
+          role: true,
+          isActive: true,
+          addresses: true,
+          orders: true,
+          createdAt: true,
+          updatedAt: true,
+          isPremium: true,
+          isVerified: true,
+          password: true,
+          images: { select: { ownerType: true, id: true, imageUrl: true, publicId: true }, where: { ownerType: ImageOwnerType.USER } },
+        },
       });
     } catch (error) {
       throw new BadRequestException({
@@ -116,6 +133,21 @@ export class UserRepository {
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
         message: `Something went wrong.`,
+      });
+    }
+  }
+  async updatePassword(id: string, hashedPassword: string) {
+    try {
+      return this.prisma.user.update({
+        where: { id },
+        data: { password: hashedPassword },
+        select: { id: true, email: true },
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong while updating password.`,
       });
     }
   }

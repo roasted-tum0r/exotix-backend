@@ -6,6 +6,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  IsStrongPassword,
 } from 'class-validator';
 import { UserRole } from '@prisma/client'; // ✅ Prisma enum
 import { LoginType, RegistrationAs } from 'src/config/enums/authuser-enums';
@@ -55,5 +56,26 @@ export class LoginOtpVerifyDto extends LoginWithOtpDto {
   OTP: string;
   @IsNotEmpty()
   @IsString()
-  hash_key;
+  hash_key: string;
+}
+
+/** Sent to request a password-change OTP (requires auth) */
+export class RequestPasswordChangeOtpDto {
+  // No body needed – the current user is identified from the JWT.
+  // This class can stay empty; it exists to document the intent.
+}
+
+/** Sent to finalize a password change after OTP is verified */
+export class UpdatePasswordDto {
+  @IsNotEmpty()
+  @IsString()
+  OTP: string;
+
+  @IsNotEmpty()
+  @IsString()
+  hash_key: string;
+
+  @IsNotEmpty()
+  @MinLength(6)
+  newPassword: string;
 }

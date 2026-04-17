@@ -15,6 +15,7 @@ import {
   LoginOtpVerifyDto,
   LoginWithOtpDto,
   LoginWithPasswordDto,
+  UpdatePasswordDto,
 } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -171,18 +172,48 @@ export class AuthController {
       };
     }
   }
-  // @Get()
-  // findAll() {
-  //   return this.authUserService.findAll();
-  // }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.authUserService.findOne(+id);
-  // }
+  /**
+   * Step 1 – Authenticated user requests an OTP to authorise a password change.
+   * POST /auth/request-password-otp
+   */
+  @Post('/request-password-otp')
+  async requestPasswordChangeOtp(@CurrentUser() user: User) {
+    try {
+      return await this.authUserService.requestPasswordChangeOtp(user);
+    } catch (error) {
+      AppLogger.error('Error in requestPasswordChangeOtp:', error);
+      if (error instanceof HttpException) throw error;
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to send OTP. Something went wrong.',
+        data: null,
+      };
+    }
+  }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.authUserService.remove(+id);
-  // }
+  /**
+   * Step 2 – Submit OTP + hash_key + newPassword to finalise the change.
+   * PATCH /auth/update-password
+   * Body: { OTP, hash_key, newPassword }
+   */
+  @Patch('/update-password')
+  async updatePassword(
+    @CurrentUser() user: User,
+    @Body() body: UpdatePasswordDto,
+  ) {
+    try {
+      return await this.authUserService.updatePassword(user, body);
+    } catch (error) {
+      AppLogger.error('Error in updatePassword:', error);
+      if (error instanceof HttpException) throw error;
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to update password. Something went wrong.',
+        data: null,
+      };
+    }
+  }
 }

@@ -11,6 +11,7 @@ import {
   LoginOtpVerifyDto,
   LoginWithOtpDto,
   LoginWithPasswordDto,
+  UpdatePasswordDto,
 } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { UserRepository } from './auth.repository';
@@ -332,6 +333,110 @@ export class AuthService {
       });
     }
   }
+  /**
+   * Step 1 – Request a password-change OTP.
+   * Requires a valid JWT (user must be already logged in).
+   * Generates an OTP + hash and emails it to the authenticated user.
+   */
+  async requestPasswordChangeOtp(user: User) {
+    try {
+      const otp = AuthService.generateOtp(6);
+      const hash = AuthService.generateHash(4);
+      const OTP_EXPIRY_TIME: number = process.env.OTP_EXPIRY_TIME
+        ? +process.env.OTP_EXPIRY_TIME
+        : 420;
+
+      // Namespace separately from login OTPs so they can't be cross-used
+      await this.redisService.setValue(
+        `pwd_otp:user:${user.id}`,
+        otp,
+        hash,
+        OTP_EXPIRY_TIME,
+      );
+
+      await this.mailService.sendMail(
+        `Anandini <info@anandini.org.in>`,
+        user.email!,
+        'Password Change Verification OTP',
+        Templates.loginOtpEmail({
+          firstName: user.firstname!,
+          otp,
+          hash,
+          expirySeconds: OTP_EXPIRY_TIME,
+        }),
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `A verification OTP has been sent to ${user.email}`,
+        data: { hash_key: hash },
+      };
+    } catch (error) {
+      AppLogger.error(`requestPasswordChangeOtp failed`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error.message || 'Failed to send OTP. Something went wrong.',
+      });
+    }
+  }
+
+  /**
+   * Step 2 – Verify OTP and update the password.
+   * Requires a valid JWT AND a matching OTP + hash_key from Step 1.
+   */
+  async updatePassword(user: User, body: UpdatePasswordDto) {
+    try {
+      const { OTP, hash_key, newPassword } = body;
+      const sessionKey = `pwd_otp:user:${user.id}`;
+
+      const session = await this.redisService.getSession<{
+        value: string;
+        hash: string;
+      }>(sessionKey, hash_key);
+
+      if (!session || session.value !== OTP || session.hash !== hash_key) {
+        const retryLimitReached = await this.retryCount();
+        if (retryLimitReached) {
+          await this.redisService.deleteSession(sessionKey, hash_key);
+          throw new UnauthorizedException({
+            statusCode: HttpStatus.UNAUTHORIZED,
+            error: true,
+            message: `Too many failed attempts. Your OTP session has expired.`,
+          });
+        }
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Invalid or expired OTP.`,
+        });
+      }
+
+      // Consume the session so it cannot be replayed
+      await this.redisService.deleteSession(sessionKey, hash_key);
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.userRepository.updatePassword(user.id, hashedPassword);
+
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Password updated successfully.`,
+        data: null,
+      };
+    } catch (error) {
+      AppLogger.error(`updatePassword failed`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error.message || 'Failed to update password. Something went wrong.',
+      });
+    }
+  }
+
   private async retryCount() {
     if (AuthService.retryOtpCount <= AuthService.MAX_RETRY_COUNT) {
       AuthService.retryOtpCount++;

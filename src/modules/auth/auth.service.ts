@@ -85,8 +85,8 @@ export class AuthService {
         await this.uploadRepo.addImages(user.id, [body.image], ImageOwnerType.USER);
       }
 
-      const payload = { sub: user.id, role: user.role, email: user.email };
-      const accessToken = this.jwtService.sign(payload);
+      // const payload = { sub: user.id, role: user.role, email: user.email };
+      // const accessToken = this.jwtService.sign(payload);
       await this.mailService.sendMail(
         `Anandini <info@anandini.org.in>`,
         body.email,

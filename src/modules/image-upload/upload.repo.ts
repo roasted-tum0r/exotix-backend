@@ -42,7 +42,7 @@ export class UploadRepo {
         const ownerField = this.getOwnerField(ownerType);
         return this.prisma.image.findMany({
             where: { [ownerField]: refId },
-            select: { publicId: true },
+            select: { publicId: true, imageUrl: true },
         });
     }
     private getOwnerField(ownerType: ImageOwnerType): string {

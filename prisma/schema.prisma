@@ -61,6 +61,8 @@ enum ImageOwnerType {
   ITEM
   BRANCH
   REVIEW
+  CATEGORY_BANNER  // main hero / banner image of a category
+  CATEGORY_IMAGE   // square thumbnail / icon image of a category
 }
 
 
@@ -143,6 +145,7 @@ model CategoryMaster {
   user        User          @relation("CategoryCreator", fields: [createdBy], references: [id])
   updater     User          @relation("CategoryUpdater", fields: [updatedBy], references: [id])
   items       Item[]        // One-to-many
+  images      Image[]       // One-to-many (category banner / thumbnail images)
   @@index([isActive])
   @@index([createdBy])
   @@index([updatedBy])
@@ -382,11 +385,14 @@ model Image {
   branch      Branch?        @relation(fields: [branchId], references: [id])
   reviewId    String?
   review      Review?        @relation(fields: [reviewId], references: [id])
+  categoryId  String?
+  category    CategoryMaster? @relation(fields: [categoryId], references: [id])
   uploadedAt  DateTime       @default(now())
   @@index([ownerType, userId])     // fetch all images for a user instantly
   @@index([ownerType, itemId])     // fetch all images for an item instantly
   @@index([ownerType, branchId])
   @@index([ownerType, reviewId])
+  @@index([ownerType, categoryId])  // fetch all images for a category instantly
 }
 
 model Review {
@@ -457,4 +463,134 @@ model NewsletterSubscriber {
   @@index([isActive])
   @@index([isUser])
   @@index([source])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity / Audit Log
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Every discrete action the system can perform
+enum ActivityType {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  REGISTER            // new user signs up
+  LOGIN               // successful login (OTP or password path)
+  LOGOUT              // explicit logout / session invalidation
+  LOGIN_FAILED        // wrong OTP / password attempt
+  OTP_REQUESTED       // OTP email dispatched
+  OTP_VERIFIED        // OTP accepted
+  PASSWORD_CHANGE_OTP // password-change OTP requested
+  PASSWORD_CHANGED    // password updated successfully
+  TOKEN_REFRESHED     // silent refresh-token exchange
+  ACCOUNT_DEACTIVATED // user / admin deactivates an account
+
+  // ── CRUD core ─────────────────────────────────────────────────────────────
+  CREATE              // generic create
+  READ                // generic fetch / read
+  UPDATE              // generic update / patch
+  DELETE              // generic delete (hard)
+  SOFT_DELETE         // isActive toggled to false
+  RESTORE             // isActive toggled back to true
+
+  // ── Order lifecycle ───────────────────────────────────────────────────────
+  ORDER_PLACED
+  ORDER_PROCESSING
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+
+  // ── Inventory ─────────────────────────────────────────────────────────────
+  INVENTORY_UPDATED   // stock count changed at a branch
+
+  // ── Media ─────────────────────────────────────────────────────────────────
+  IMAGE_UPLOADED
+  IMAGE_DELETED
+
+  // ── Cart ──────────────────────────────────────────────────────────────────
+  CART_ITEM_ADDED
+  CART_ITEM_REMOVED
+  CART_ITEM_UPDATED
+  CART_CLEARED
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  REVIEW_SUBMITTED
+  REVIEW_UPDATED
+  REVIEW_DELETED
+
+  // ── Offers / Coupons ──────────────────────────────────────────────────────
+  OFFER_APPLIED
+  OFFER_REMOVED
+
+  // ── Newsletter ────────────────────────────────────────────────────────────
+  NEWSLETTER_SUBSCRIBED
+  NEWSLETTER_UNSUBSCRIBED
+
+  // ── Misc / Admin ──────────────────────────────────────────────────────────
+  EXPORT              // data exported (CSV, PDF, etc.)
+  IMPORT              // bulk import
+  SETTINGS_CHANGED    // system-level config changes
+}
+
+// Who / what access level triggered the activity
+enum ActorType {
+  CUSTOMER    // registered customer (UserRole.CUSTOMER)
+  EMPLOYEE    // branch-level employee
+  MANAGER     // branch / ops manager
+  ADMIN       // platform admin
+  SYSTEM      // automated / background job (cron, webhook, etc.)
+  GUEST       // unauthenticated / guest session
+}
+
+// Which table / domain the activity was performed on
+enum EntityType {
+  USER
+  ADDRESS
+  CATEGORY
+  ITEM
+  INVENTORY
+  ORDER
+  ORDER_ITEM
+  CART
+  CART_ITEM
+  REVIEW
+  IMAGE
+  OFFER
+  BRANCH
+  EMPLOYEE
+  NEWSLETTER_SUBSCRIBER
+  FAVOURITE
+  WISHLIST
+  AUTH               // auth-scoped events (login, OTP, token refresh)
+  SYSTEM             // platform-wide settings / exports / imports
+}
+
+model ActivityLog {
+  id          String       @id @default(uuid())
+
+  // What happened
+  type        ActivityType
+
+  // Who did it
+  actorType   ActorType
+  actorId     String?      // userId if applicable; null for SYSTEM / GUEST
+
+  // On what entity
+  entityType  EntityType
+  entityId    String?      // primary key of the affected row; null for list fetches
+
+  // Extra context (diff, filters, meta, error message, etc.)
+  meta        Json?
+
+  // Request traceability
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime     @default(now())
+
+  @@index([type])
+  @@index([actorId])
+  @@index([actorType])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId, createdAt])       // timeline for a specific user
+  @@index([entityType, type, createdAt]) // audit trail per entity type
 }

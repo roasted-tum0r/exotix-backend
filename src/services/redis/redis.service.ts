@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 
@@ -74,5 +74,33 @@ export class RedisService {
    */
   async ping(): Promise<string> {
     return await this.redis.ping();
+  }
+
+  // ─── Refresh Token Helpers ───────────────────────────────────────────────────
+
+  /**
+   * Store a refresh token string for a user.
+   * @param userId  User ID (used as part of the Redis key)
+   * @param token   The refresh token JWT string
+   * @param ttl     TTL in seconds (should match JWT expiry — default 900 = 15 min)
+   */
+  async setRefreshToken(userId: string, token: string, ttl = 900): Promise<void> {
+    await this.redis.set(`refresh:${userId}`, token, 'EX', ttl);
+  }
+
+  /**
+   * Retrieve the stored refresh token for a user.
+   * Returns null if the key does not exist (expired or never set).
+   */
+  async getRefreshToken(userId: string): Promise<string | null> {
+    return await this.redis.get(`refresh:${userId}`);
+  }
+
+  /**
+   * Delete (invalidate) a user's refresh token.
+   * Call this on logout or password change.
+   */
+  async deleteRefreshToken(userId: string): Promise<void> {
+    await this.redis.del(`refresh:${userId}`);
   }
 }

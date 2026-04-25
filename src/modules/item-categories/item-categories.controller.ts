@@ -32,7 +32,7 @@ export class ItemCategoriesController {
   @Roles('admin')
   @Post()
   async create(
-    @Body() createItemCategoryDto: CreateItemCategoryDto,
+    @Body() createItemCategoryDto: CreateItemCategoryDto[],
     @CurrentUser() user: User,
   ) {
     try {

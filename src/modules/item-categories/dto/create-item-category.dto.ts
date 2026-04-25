@@ -1,5 +1,6 @@
-import { OmitType } from '@nestjs/mapped-types';
-import { IsString, IsNotEmpty, IsOptional, IsUrl, IsInt } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ImagesDto } from 'src/modules/reviews/dto/review.dto';
 
 export class CreateItemCategoryDto {
   @IsString()
@@ -10,8 +11,16 @@ export class CreateItemCategoryDto {
   description: string;
 
   @IsOptional()
-  @IsString()
-  @IsUrl({}, { message: 'Image must be a valid URL' })
-  image?: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImagesDto)
+  bannerimage?: ImagesDto;
+
+  /** index 0 → CATEGORY_BANNER, index 1 → CATEGORY_IMAGE */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImagesDto)
+  categoryImage?: ImagesDto;
 }
 

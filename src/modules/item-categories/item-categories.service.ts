@@ -7,32 +7,57 @@ import {
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ItemCategoryRepo } from './item-categories.repository';
-import { User } from '@prisma/client';
+import { ImageOwnerType, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { UploadRepo } from '../image-upload/upload.repo';
 
 @Injectable()
 export class ItemCategoriesService {
-  constructor(private readonly itemCategoriesRepo: ItemCategoryRepo) {}
+  constructor(
+    private readonly itemCategoriesRepo: ItemCategoryRepo,
+    private readonly uploadRepo: UploadRepo,
+  ) {}
   // ✅ Add new categories
   async addCategory(
-    data: CreateItemCategoryDto | CreateItemCategoryDto[],
+    data:CreateItemCategoryDto[],
     user: User,
   ) {
     try {
       const payload = await this.itemCategoriesRepo.addCategory(data, user.id);
+
+      if (Array.isArray(data) && Array.isArray(payload)) {
+        // Bulk upload — process images for each category
+        for (let i = 0; i < data.length; i++) {
+          const bannerimage = (data[i] as CreateItemCategoryDto).bannerimage;
+        const categoryImage = (data[i] as CreateItemCategoryDto).categoryImage;
+          if (bannerimage) {
+            await this.uploadRepo.addImages(payload[i].id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
+          }
+          if (categoryImage) {
+            await this.uploadRepo.addImages(payload[i].id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
+          }
+        }
+      } else if (!Array.isArray(data) && !Array.isArray(payload)) {
+        // Single upload
+        const bannerimage = (data as CreateItemCategoryDto).bannerimage;
+        const categoryImage = (data as CreateItemCategoryDto).categoryImage;
+        if (bannerimage) {
+          await this.uploadRepo.addImages(payload.id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
+        }
+        if (categoryImage) {
+          await this.uploadRepo.addImages(payload.id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
+        }
+      }
+
       return {
         statusCode: HttpStatus.CREATED,
         error: false,
         message: 'Categories were created',
         data: Array.isArray(payload)
-          ? payload.map((r) => ({
-              ...r,
-            }))
-          : {
-              ...payload,
-            },
+          ? payload.map((r) => ({ ...r }))
+          : { ...payload },
       };
     } catch (error) {
       throw new BadRequestException({
@@ -116,6 +141,7 @@ export class ItemCategoriesService {
           id,
           data,
         );
+        
         return {
           statusCode: HttpStatus.OK,
           error: false,

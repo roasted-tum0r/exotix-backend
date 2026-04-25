@@ -55,6 +55,9 @@ export class UploadRepo {
                 return "branchId";
             case ImageOwnerType.REVIEW:
                 return "reviewId";
+            case ImageOwnerType.CATEGORY_BANNER:
+            case ImageOwnerType.CATEGORY_IMAGE:
+                return "categoryId";
             default:
                 throw new Error("Invalid owner type");
         }

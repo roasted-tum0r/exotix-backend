@@ -8,7 +8,10 @@ import {
   Delete,
   HttpStatus,
   HttpException,
+  Res,
+  Req,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import {
   CreateAuthUserDto,
@@ -22,8 +25,6 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
-import { DecryptIdPipe } from 'src/common/pipes/decrypt-id.pipe';
-import { EncryptIdInterceptor } from 'src/common/intercptors/encrypt-id.interceptor';
 import { Roles } from 'src/common/decorators/user-role.decorator';
 
 // @UseInterceptors(EncryptIdInterceptor)
@@ -85,18 +86,50 @@ export class AuthController {
   }
   @Public('verifyLoginOtp')
   @Post('/verify-otp')
-  async verifyLoginOtp(@Body() body: LoginOtpVerifyDto) {
+  async verifyLoginOtp(@Body() body: LoginOtpVerifyDto, @Res() res: Response) {
     try {
-      return await this.authUserService.verifyLoginOtp(body);
+      return await this.authUserService.verifyLoginOtp(body, res);
     } catch (error) {
       AppLogger.error('Error in verifyLoginOtp:', error);
       if (error instanceof HttpException) throw error;
-      return {
+      return res.status(error?.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: error?.message || 'Failed to log in. Something went wrong.',
         data: null,
-      };
+      });
+    }
+  }
+
+  /**
+   * Silent token refresh.
+   * The browser sends the HttpOnly `refresh_token` cookie automatically.
+   * No body is required from the client.
+   * POST /auth/refresh-token
+   */
+  @Public('refreshToken')
+  @Post('/refresh-token')
+  async refreshToken(@Req() req: Request, @Res() res: Response) {
+    try {
+      const refreshToken: string | undefined = req.cookies?.['refresh_token'];
+      if (!refreshToken) {
+        return res.status(HttpStatus.UNAUTHORIZED).json({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'No refresh token found. Please log in again.',
+          data: null,
+        });
+      }
+      return await this.authUserService.refreshAccessToken(refreshToken, res);
+    } catch (error) {
+      AppLogger.error('Error in refreshToken:', error);
+      if (error instanceof HttpException) throw error;
+      return res.status(error?.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: error?.message || 'Failed to refresh token. Something went wrong.',
+        data: null,
+      });
     }
   }
   @Patch('/update-user/:id')

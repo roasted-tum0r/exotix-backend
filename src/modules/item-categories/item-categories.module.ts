@@ -8,3 +8,4 @@ import { ItemCategoryRepo } from './item-categories.repository';
   providers: [ItemCategoriesService,ItemCategoryRepo],
 })
 export class ItemCategoriesModule {}
+

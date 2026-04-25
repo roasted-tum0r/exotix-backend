@@ -19,11 +19,10 @@ export class ItemCategoryRepo {
   ) {
     try {
       if (Array.isArray(data)) {
-        const bulkData = data.map((d) => ({
-          ...d,
-          createdBy: userId,
-          updatedBy: userId, // first update = creator, // pass FK directly
-        }));
+        const bulkData = data.map((d) => {
+          const { bannerimage, categoryImage, ...rest } = d;
+          return { ...rest, createdBy: userId, updatedBy: userId };
+        });
 
         await this.prismaService.categoryMaster.createMany({
           data: bulkData,
@@ -41,14 +40,16 @@ export class ItemCategoryRepo {
             updatedAt: true,
             _count: true,
             user: true,
+            images: { select: { ownerType: true, imageUrl: true, publicId: true } },
           },
         });
-      } else
+      } else {
+        const { bannerimage, categoryImage, ...categoryData } = data as CreateItemCategoryDto;
         return await this.prismaService.categoryMaster.create({
           data: {
-            ...data,
+            ...categoryData,
             createdBy: userId,
-            updatedBy: userId, // first update = creator, // pass FK directly
+            updatedBy: userId,
           },
           select: {
             id: true,
@@ -58,8 +59,10 @@ export class ItemCategoryRepo {
             updatedAt: true,
             _count: true,
             user: true,
+            images: { select: { ownerType: true, imageUrl: true, publicId: true } },
           },
         });
+      }
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -91,15 +94,17 @@ export class ItemCategoryRepo {
   }
   async updateCategory(id: string, data: UpdateItemCategoryDto) {
     try {
+      const { bannerimage, categoryImage, deletedImagePublicIds, ...categoryData } = data;
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
-        data,
+        data: categoryData,
         select: {
           id: true,
           name: true,
           description: true,
           createdAt: true,
           updatedAt: true,
+          images: { select: { ownerType: true, imageUrl: true, publicId: true } },
         },
       });
     } catch (error) {

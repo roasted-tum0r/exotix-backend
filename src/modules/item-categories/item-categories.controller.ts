@@ -12,6 +12,7 @@ import {
   Logger,
   NotFoundException,
   HttpException,
+  UseGuards,
 } from '@nestjs/common';
 import { ItemCategoriesService } from './item-categories.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
@@ -23,12 +24,13 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
 
 @Controller('item-categories')
 export class ItemCategoriesController {
   private readonly logger = new Logger(ItemCategoriesController.name);
 
-  constructor(private readonly itemCategoriesService: ItemCategoriesService) {}
+  constructor(private readonly itemCategoriesService: ItemCategoriesService) { }
   @Roles('admin')
   @Post()
   async create(
@@ -51,7 +53,7 @@ export class ItemCategoriesController {
   @Roles('admin')
   @Patch('/update/:id')
   async update(
-    @Param('id' ) id: string,
+    @Param('id') id: string,
     @Body() updateItemCategoryDto: UpdateItemCategoryDto,
   ) {
     try {
@@ -75,7 +77,22 @@ export class ItemCategoriesController {
       });
     }
   }
+  // @Roles('admin')
+  // @Patch('/activate/:id')
+  // async activate(@Param('id') id: string) {
+  //   try {
+  //     return await this.itemCategoriesService.activateCategory(id);
+  //   } catch (error) {
+  //     AppLogger.error(`Failed to activate category with id ${id}`, error.stack);
+  //     if (error instanceof HttpException) throw error;
+  //     throw new InternalServerErrorException({
+  //       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+  //       message: 'Failed to activate category',
+  //     });
+  //   }
+  // }
   @Public('findallcategories')
+  @UseGuards(OptionalAuthGuard)
   @Post('/findall')
   async findAll(
     @Body() paginationObject: Omit<IPagination, 'isAsc'>,
@@ -96,7 +113,7 @@ export class ItemCategoriesController {
   }
   @Public('findOnecategory')
   @Get('/getone/:id')
-  async findOne(@Param('id' ) id: string) {
+  async findOne(@Param('id') id: string) {
     try {
       const result = await this.itemCategoriesService.getCategoryById(id);
       if (!result) {
@@ -117,7 +134,7 @@ export class ItemCategoriesController {
   }
   @Roles('admin')
   @Delete('/deactivate/:id')
-  async remove(@Param('id' ) id: string) {
+  async remove(@Param('id') id: string) {
     try {
       return await this.itemCategoriesService.deleteCategory(id);
     } catch (error) {

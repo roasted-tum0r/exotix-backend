@@ -2,17 +2,40 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
 import { AppLogger } from 'src/common/utils/app.logger';
+
 @Injectable()
 export class ItemCategoryRepo {
   constructor(private readonly prismaService: PrismaService) {}
+
+  // ─── Shared select projection ────────────────────────────────────────────────
+  private get categorySelectFields(): Prisma.CategoryMasterSelect {
+    return {
+      id: true,
+      name: true,
+      description: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: true,
+      createdBy: true,
+      updatedBy: true,
+      // createdBy / updatedBy user relations
+      user: true,
+      images: {
+        select: { ownerType: true, imageUrl: true, publicId: true },
+        where: { ownerType: { in: ['CATEGORY_IMAGE', 'CATEGORY_BANNER'] } },
+      },
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   async addCategory(
     data: CreateItemCategoryDto | CreateItemCategoryDto[],
     userId: string,
@@ -28,39 +51,19 @@ export class ItemCategoryRepo {
           data: bulkData,
           skipDuplicates: true,
         });
+
         return this.prismaService.categoryMaster.findMany({
           where: { createdBy: userId },
           orderBy: { id: 'desc' }, // newest first
           take: bulkData.length,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-            _count: true,
-            user: true,
-            images: { select: { ownerType: true, imageUrl: true, publicId: true } },
-          },
+          select: this.categorySelectFields,
         });
       } else {
-        const { bannerimage, categoryImage, ...categoryData } = data as CreateItemCategoryDto;
+        const { bannerimage, categoryImage, ...categoryData } =
+          data as CreateItemCategoryDto;
         return await this.prismaService.categoryMaster.create({
-          data: {
-            ...categoryData,
-            createdBy: userId,
-            updatedBy: userId,
-          },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-            _count: true,
-            user: true,
-            images: { select: { ownerType: true, imageUrl: true, publicId: true } },
-          },
+          data: { ...categoryData, createdBy: userId, updatedBy: userId },
+          select: this.categorySelectFields,
         });
       }
     } catch (error) {
@@ -76,13 +79,7 @@ export class ItemCategoryRepo {
     try {
       return await this.prismaService.categoryMaster.findUnique({
         where: { id, isActive: true },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: this.categorySelectFields,
       });
     } catch (error) {
       throw new BadRequestException({
@@ -92,20 +89,14 @@ export class ItemCategoryRepo {
       });
     }
   }
+
   async updateCategory(id: string, data: UpdateItemCategoryDto) {
     try {
       const { bannerimage, categoryImage, deletedImagePublicIds, ...categoryData } = data;
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
         data: categoryData,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          images: { select: { ownerType: true, imageUrl: true, publicId: true } },
-        },
+        select: this.categorySelectFields,
       });
     } catch (error) {
       throw new BadRequestException({
@@ -115,21 +106,14 @@ export class ItemCategoryRepo {
       });
     }
   }
+
   async deleteCategory(id: string) {
     try {
       await this.getCategoryById(id); // check if exists
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
-        data: {
-          isActive: false,
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        data: { isActive: false },
+        select: this.categorySelectFields,
       });
     } catch (error) {
       throw new BadRequestException({
@@ -139,13 +123,12 @@ export class ItemCategoryRepo {
       });
     }
   }
+
   async getAllCategories(paginatinObject: IPagination) {
     try {
       const [categories, total] = await this.prismaService.$transaction([
         this.prismaService.categoryMaster.findMany({
-          where: {
-            isActive: true,
-          },
+          where: { isActive: true },
           orderBy: {
             [`${paginatinObject.sortBy || 'createdAt'}`]: paginatinObject.isAsc
               ? 'asc'
@@ -153,19 +136,10 @@ export class ItemCategoryRepo {
           },
           skip: (paginatinObject.page - 1) * paginatinObject.limit,
           take: paginatinObject.limit,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-            _count: true,
-          },
+          select: this.categorySelectFields,
         }),
         this.prismaService.categoryMaster.count({
-          where: {
-            isActive: true,
-          },
+          where: { isActive: true },
         }),
       ]);
 
@@ -184,6 +158,7 @@ export class ItemCategoryRepo {
       });
     }
   }
+
   async searchCategory(searchObject: ISearchObject) {
     try {
       const [categories, total] = await this.prismaService.$transaction([
@@ -194,13 +169,7 @@ export class ItemCategoryRepo {
             },
             isActive: true,
           },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-          },
+          select: this.categorySelectFields,
         }),
         this.prismaService.categoryMaster.count({
           where: {

@@ -5,7 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './services/redis/redis.module';
 import { MailModule } from './services/mail/mailservice.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { GlobalAuthGuard } from './auth/guards/global-auth.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { EncryptIdInterceptor } from './common/intercptors/encrypt-id.interceptor';
@@ -24,6 +24,7 @@ import { NewsletterSubsModule } from './modules/newsletter-subs/newsletter-subs.
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/image-upload/upload.module';
+import { OptionalAuthGuard } from './auth/optionalguards/optional-auth.guard';
 
 @Module({
   imports: [
@@ -69,6 +70,10 @@ import { UploadModule } from './modules/image-upload/upload.module';
     {
       provide: APP_GUARD,
       useClass: GlobalAuthGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: OptionalAuthGuard,
     },
     {
       provide: APP_GUARD,

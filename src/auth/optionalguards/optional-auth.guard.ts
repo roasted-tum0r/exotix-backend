@@ -1,13 +1,14 @@
 import {
   CanActivate,
   ExecutionContext,
+  Global,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { UserRepository } from 'src/modules/auth/auth.repository';
-
+@Global()
 @Injectable()
 export class OptionalAuthGuard implements CanActivate {
   constructor(

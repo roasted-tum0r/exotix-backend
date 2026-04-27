@@ -11,7 +11,7 @@ import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 imports: [
   JwtModule.register({
     secret: process.env.JWT_SECRET ?? 'default_secret',
-    signOptions: { expiresIn: '10m' },
+    signOptions: { expiresIn: '1000m' },
   }),
 ],
   controllers: [AuthController],

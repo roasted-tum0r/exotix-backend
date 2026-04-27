@@ -104,7 +104,7 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Get all categories
-  async getAllCategories(paginatinObject: IPagination) {
+  async getAllCategories(paginatinObject: IPagination, user?: User) {
     try {
       const payload = await this.itemCategoriesRepo.getAllCategories({
         ...paginatinObject,
@@ -112,7 +112,7 @@ export class ItemCategoriesService {
         limit: paginatinObject.limit ?? 100,
         isAsc: paginatinObject.isAsc ?? true,
         sortBy: paginatinObject.sortBy ?? '',
-      });
+      }, user);
       return {
         statusCode: HttpStatus.OK,
         error: false,

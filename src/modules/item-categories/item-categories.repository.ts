@@ -3,7 +3,7 @@ import {
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
@@ -13,10 +13,10 @@ import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
 export class ItemCategoryRepo {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   // ─── Shared select projection ────────────────────────────────────────────────
-  private get categorySelectFields(): Prisma.CategoryMasterSelect {
+  categorySelectFields(user?: User): Prisma.CategoryMasterSelect {
     return {
       id: true,
       name: true,
@@ -24,13 +24,54 @@ export class ItemCategoryRepo {
       createdAt: true,
       updatedAt: true,
       _count: true,
-      createdBy: true,
-      updatedBy: true,
-      // createdBy / updatedBy user relations
-      user: true,
+
+      // remove these unless you explicitly need raw IDs
+      // createdBy: true,
+      // updatedBy: true,
+
+      // creator
+      user: {
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          images: {
+            select: {
+              ownerType: true,
+              id: true,
+              imageUrl: true,
+              publicId: true,
+            },
+            where: { ownerType: ImageOwnerType.USER },
+          },
+        },
+      },
+
+      // updater (only for admin)
+      ...(user?.role === 'ADMIN' && {
+        updater: {
+          select: {
+            id: true,
+            firstname: true,
+            lastname: true,
+            images: {
+              select: {
+                ownerType: true,
+                id: true,
+                imageUrl: true,
+                publicId: true,
+              },
+              where: { ownerType: ImageOwnerType.USER },
+            },
+          },
+        },
+      }),
+
       images: {
         select: { ownerType: true, imageUrl: true, publicId: true },
-        where: { ownerType: { in: ['CATEGORY_IMAGE', 'CATEGORY_BANNER'] } },
+        where: {
+          ownerType: { in: ['CATEGORY_IMAGE', 'CATEGORY_BANNER'] },
+        },
       },
     };
   }
@@ -56,14 +97,14 @@ export class ItemCategoryRepo {
           where: { createdBy: userId },
           orderBy: { id: 'desc' }, // newest first
           take: bulkData.length,
-          select: this.categorySelectFields,
+          select: this.categorySelectFields(),
         });
       } else {
         const { bannerimage, categoryImage, ...categoryData } =
           data as CreateItemCategoryDto;
         return await this.prismaService.categoryMaster.create({
           data: { ...categoryData, createdBy: userId, updatedBy: userId },
-          select: this.categorySelectFields,
+          select: this.categorySelectFields(),
         });
       }
     } catch (error) {
@@ -79,7 +120,7 @@ export class ItemCategoryRepo {
     try {
       return await this.prismaService.categoryMaster.findUnique({
         where: { id, isActive: true },
-        select: this.categorySelectFields,
+        select: this.categorySelectFields(),
       });
     } catch (error) {
       throw new BadRequestException({
@@ -96,7 +137,7 @@ export class ItemCategoryRepo {
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
         data: categoryData,
-        select: this.categorySelectFields,
+        select: this.categorySelectFields(),
       });
     } catch (error) {
       throw new BadRequestException({
@@ -113,7 +154,7 @@ export class ItemCategoryRepo {
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
         data: { isActive: false },
-        select: this.categorySelectFields,
+        select: this.categorySelectFields(),
       });
     } catch (error) {
       throw new BadRequestException({
@@ -124,7 +165,7 @@ export class ItemCategoryRepo {
     }
   }
 
-  async getAllCategories(paginatinObject: IPagination) {
+  async getAllCategories(paginatinObject: IPagination, user?: User) {
     try {
       const [categories, total] = await this.prismaService.$transaction([
         this.prismaService.categoryMaster.findMany({
@@ -136,7 +177,7 @@ export class ItemCategoryRepo {
           },
           skip: (paginatinObject.page - 1) * paginatinObject.limit,
           take: paginatinObject.limit,
-          select: this.categorySelectFields,
+          select: this.categorySelectFields(user),
         }),
         this.prismaService.categoryMaster.count({
           where: { isActive: true },
@@ -169,7 +210,7 @@ export class ItemCategoryRepo {
             },
             isActive: true,
           },
-          select: this.categorySelectFields,
+          select: this.categorySelectFields(),
         }),
         this.prismaService.categoryMaster.count({
           where: {

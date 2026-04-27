@@ -97,12 +97,13 @@ export class ItemCategoriesController {
   async findAll(
     @Body() paginationObject: Omit<IPagination, 'isAsc'>,
     @Body('isAsc') isAsc: string,
+    @CurrentUser() user?: User,
   ) {
     try {
       return await this.itemCategoriesService.getAllCategories({
         ...paginationObject,
         isAsc: isAsc === 'true',
-      });
+      }, user);
     } catch (error) {
       AppLogger.error('Failed to fetch categories', error.stack);
       throw new InternalServerErrorException({

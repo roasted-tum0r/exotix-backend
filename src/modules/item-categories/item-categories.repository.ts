@@ -2,6 +2,7 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -10,10 +11,11 @@ import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { UploadRepo } from '../image-upload/upload.repo';
 
 @Injectable()
 export class ItemCategoryRepo {
-  constructor(private readonly prismaService: PrismaService) { }
+  constructor(private readonly prismaService: PrismaService, private readonly uploadRepo: UploadRepo) { }
 
   // ─── Shared select projection ────────────────────────────────────────────────
   categorySelectFields(user?: User): Prisma.CategoryMasterSelect {
@@ -70,7 +72,7 @@ export class ItemCategoryRepo {
       images: {
         select: { ownerType: true, imageUrl: true, publicId: true },
         where: {
-          ownerType: { in: ['CATEGORY_IMAGE', 'CATEGORY_BANNER'] },
+          ownerType: { in: [ImageOwnerType.CATEGORY_IMAGE, ImageOwnerType.CATEGORY_BANNER] },
         },
       },
     };
@@ -83,22 +85,40 @@ export class ItemCategoryRepo {
   ) {
     try {
       if (Array.isArray(data)) {
-        const bulkData = data.map((d) => {
+        const createdCategories: any[] = [];
+
+        for (const d of data) {
           const { bannerimage, categoryImage, ...rest } = d;
-          return { ...rest, createdBy: userId, updatedBy: userId };
-        });
 
-        await this.prismaService.categoryMaster.createMany({
-          data: bulkData,
-          skipDuplicates: true,
-        });
+          const category = await this.prismaService.categoryMaster.create({
+            data: {
+              ...rest,
+              createdBy: userId,
+              updatedBy: userId,
+            },
+            select: this.categorySelectFields(),
+          });
 
-        return this.prismaService.categoryMaster.findMany({
-          where: { createdBy: userId },
-          orderBy: { id: 'desc' }, // newest first
-          take: bulkData.length,
-          select: this.categorySelectFields(),
-        });
+          // attach images immediately (no mismatch possible)
+          if (bannerimage) {
+            await this.uploadRepo.addImages(
+              category.id,
+              [bannerimage],
+              ImageOwnerType.CATEGORY_BANNER
+            );
+          }
+
+          if (categoryImage) {
+            await this.uploadRepo.addImages(
+              category.id,
+              [categoryImage],
+              ImageOwnerType.CATEGORY_IMAGE
+            );
+          }
+
+          createdCategories.push(category);
+        }
+        return createdCategories;
       } else {
         const { bannerimage, categoryImage, ...categoryData } =
           data as CreateItemCategoryDto;
@@ -131,14 +151,46 @@ export class ItemCategoryRepo {
     }
   }
 
-  async updateCategory(id: string, data: UpdateItemCategoryDto) {
+  async updateCategory(id: string, data: UpdateItemCategoryDto, user: User) {
     try {
       const { bannerimage, categoryImage, deletedImagePublicIds, ...categoryData } = data;
-      return await this.prismaService.categoryMaster.update({
-        where: { id, isActive: true },
-        data: categoryData,
-        select: this.categorySelectFields(),
+
+      const category = await this.prismaService.categoryMaster.findUnique({
+        where: { id },
       });
+
+      if (!category) {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Category not found for update',
+        });
+      }
+      const result = await this.prismaService.categoryMaster.update({
+        where: { id, isActive: true },
+        data: {...categoryData, updatedBy: user.id},
+        select: this.categorySelectFields(user),
+      });
+      if (deletedImagePublicIds && deletedImagePublicIds.length > 0) {
+        await this.uploadRepo.deleteImages(deletedImagePublicIds);
+      }
+
+      if (bannerimage) {
+        await this.uploadRepo.addImages(
+          id,
+          [bannerimage],
+          ImageOwnerType.CATEGORY_BANNER
+        );
+      }
+
+      if (categoryImage) {
+        await this.uploadRepo.addImages(
+          id,
+          [categoryImage],
+          ImageOwnerType.CATEGORY_IMAGE
+        );
+      }
+
+      return result;
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

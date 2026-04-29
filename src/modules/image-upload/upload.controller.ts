@@ -52,7 +52,7 @@ export class UploadController {
   constructor(
     private readonly cloudinaryService: CloudinaryService,
     private readonly uploadRepo: UploadRepo,
-  ) {}
+  ) { }
 
   /**
    * POST /upload
@@ -80,7 +80,7 @@ export class UploadController {
           cb(
             new BadRequestException(
               `Unsupported file type "${file.mimetype}". ` +
-                'Only safe image and video formats are allowed.',
+              'Only safe image and video formats are allowed.',
             ),
             false,
           );

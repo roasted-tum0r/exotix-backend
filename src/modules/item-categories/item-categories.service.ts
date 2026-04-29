@@ -27,29 +27,29 @@ export class ItemCategoriesService {
     try {
       const payload = await this.itemCategoriesRepo.addCategory(data, user.id);
 
-      if (Array.isArray(data) && Array.isArray(payload)) {
-        // Bulk upload — process images for each category
-        for (let i = 0; i < data.length; i++) {
-          const bannerimage = (data[i] as CreateItemCategoryDto).bannerimage;
-        const categoryImage = (data[i] as CreateItemCategoryDto).categoryImage;
-          if (bannerimage) {
-            await this.uploadRepo.addImages(payload[i].id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
-          }
-          if (categoryImage) {
-            await this.uploadRepo.addImages(payload[i].id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
-          }
-        }
-      } else if (!Array.isArray(data) && !Array.isArray(payload)) {
-        // Single upload
-        const bannerimage = (data as CreateItemCategoryDto).bannerimage;
-        const categoryImage = (data as CreateItemCategoryDto).categoryImage;
-        if (bannerimage) {
-          await this.uploadRepo.addImages(payload.id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
-        }
-        if (categoryImage) {
-          await this.uploadRepo.addImages(payload.id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
-        }
-      }
+      // if (Array.isArray(data) && Array.isArray(payload)) {
+      //   // Bulk upload — process images for each category
+      //   for (let i = 0; i < data.length; i++) {
+      //     const bannerimage = (data[i] as CreateItemCategoryDto).bannerimage;
+      //   const categoryImage = (data[i] as CreateItemCategoryDto).categoryImage;
+      //     if (bannerimage) {
+      //       await this.uploadRepo.addImages(payload[i].id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
+      //     }
+      //     if (categoryImage) {
+      //       await this.uploadRepo.addImages(payload[i].id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
+      //     }
+      //   }
+      // } else if (!Array.isArray(data) && !Array.isArray(payload)) {
+      //   // Single upload
+      //   const bannerimage = (data as CreateItemCategoryDto).bannerimage;
+      //   const categoryImage = (data as CreateItemCategoryDto).categoryImage;
+      //   if (bannerimage) {
+      //     await this.uploadRepo.addImages(payload.id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
+      //   }
+      //   if (categoryImage) {
+      //     await this.uploadRepo.addImages(payload.id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
+      //   }
+      // }
 
       return {
         statusCode: HttpStatus.CREATED,
@@ -133,13 +133,14 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Update category by ID
-  async updateCategory(id: string, data: UpdateItemCategoryDto) {
+  async updateCategory(id: string, data: UpdateItemCategoryDto, user: User) {
     try {
       const payload = await this.getCategoryById(id); // check if exists
       if (payload) {
         const updatedRecord = await this.itemCategoriesRepo.updateCategory(
           id,
           data,
+          user
         );
         
         return {

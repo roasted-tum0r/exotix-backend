@@ -55,11 +55,13 @@ export class ItemCategoriesController {
   async update(
     @Param('id') id: string,
     @Body() updateItemCategoryDto: UpdateItemCategoryDto,
+    @CurrentUser() user: User,
   ) {
     try {
       const result = await this.itemCategoriesService.updateCategory(
         id,
         updateItemCategoryDto,
+        user,
       );
       if (!result) {
         throw new NotFoundException({

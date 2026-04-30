@@ -197,7 +197,7 @@ export class ItemCategoriesService {
   }
 
   // ✅ Delete category by ID
-  async deleteCategory(id: string) {
+  async deleteCategory(id: string, user: User) {
     try {
       const category = await this.itemCategoriesRepo.getCategoryById(id);
       if (!category) {
@@ -213,6 +213,13 @@ export class ItemCategoriesService {
           statusCode: HttpStatus.FORBIDDEN,
           error: true,
           message: `Category "${category.name}" has ${category._count.items} items in it, therefore cannot delete this category. Please remove all items first or move them to another category to prevent data loss.`,
+        });
+      }
+      if (user.role !== "ADMIN" && category?.user?.id !== user?.id) {
+        throw new ForbiddenException({
+          statusCode: HttpStatus.FORBIDDEN,
+          error: true,
+          message: "You are not authorized to delete this category.",
         });
       }
       const categoryDeleted = await this.itemCategoriesRepo.deleteCategory(id);

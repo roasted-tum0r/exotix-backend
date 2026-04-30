@@ -134,11 +134,11 @@ export class ItemCategoriesController {
       });
     }
   }
-  @Roles('admin')
+  @Roles('admin','employee')
   @Delete('/deactivate/:id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @CurrentUser() user: User) {
     try {
-      return await this.itemCategoriesService.deleteCategory(id);
+      return await this.itemCategoriesService.deleteCategory(id, user);
     } catch (error) {
       AppLogger.error(`Failed to delete category with id ${id}`, error.stack);
       if (error instanceof HttpException) throw error;

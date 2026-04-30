@@ -28,7 +28,6 @@ import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
 
 @Controller('item-categories')
 export class ItemCategoriesController {
-  private readonly logger = new Logger(ItemCategoriesController.name);
 
   constructor(private readonly itemCategoriesService: ItemCategoriesService) { }
   @Roles('admin')

@@ -202,7 +202,6 @@ export class ItemCategoryRepo {
 
   async deleteCategory(id: string) {
     try {
-      await this.getCategoryById(id); // check if exists
       return await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
         data: { isActive: false },

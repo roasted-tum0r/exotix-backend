@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ForbiddenException,
+  HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
@@ -18,10 +20,10 @@ export class ItemCategoriesService {
   constructor(
     private readonly itemCategoriesRepo: ItemCategoryRepo,
     private readonly uploadRepo: UploadRepo,
-  ) {}
+  ) { }
   // ✅ Add new categories
   async addCategory(
-    data:CreateItemCategoryDto[],
+    data: CreateItemCategoryDto[],
     user: User,
   ) {
     try {
@@ -142,7 +144,7 @@ export class ItemCategoriesService {
           data,
           user
         );
-        
+
         return {
           statusCode: HttpStatus.OK,
           error: false,
@@ -204,7 +206,15 @@ export class ItemCategoriesService {
           error: true,
           message: `Category with ID ${id} not found.`,
         });
-      } // check if exists
+      }
+      // check if items exists in it
+      if (category._count.items !== 0) {
+        throw new ForbiddenException({
+          statusCode: HttpStatus.FORBIDDEN,
+          error: true,
+          message: `Category "${category.name}" has ${category._count.items} items in it, therefore cannot delete this category. Please remove all items first or move them to another category to prevent data loss.`,
+        });
+      }
       const categoryDeleted = await this.itemCategoriesRepo.deleteCategory(id);
       return {
         statusCode: HttpStatus.OK,
@@ -215,6 +225,10 @@ export class ItemCategoriesService {
         },
       };
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error; // preserve original error
+      }
+
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,

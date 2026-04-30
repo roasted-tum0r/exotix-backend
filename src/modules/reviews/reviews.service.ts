@@ -209,10 +209,13 @@ export class ReviewsService {
       const linkedImages = await this.uploadRepo.getImagesById(reviewId, ImageOwnerType.REVIEW);
       if (linkedImages.length) {
         const publicIds = linkedImages.map((img) => img.publicId);
-        await Promise.all(
+        const deletedImages = await Promise.all(
           publicIds.map((id) => this.cloudinaryService.deleteImage(id)),
         );
-        await this.uploadRepo.deleteImages(publicIds);
+        console.log("deletedImages ", deletedImages);
+        if (deletedImages?.length > 0) {
+          await this.uploadRepo.deleteImages(publicIds);
+        }
       }
 
       // 3. Delete the review row

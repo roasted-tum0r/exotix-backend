@@ -14,12 +14,14 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
 import { UploadRepo } from '../image-upload/upload.repo';
+import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 
 @Injectable()
 export class ItemCategoriesService {
   constructor(
     private readonly itemCategoriesRepo: ItemCategoryRepo,
     private readonly uploadRepo: UploadRepo,
+    private readonly cloudinaryService: CloudinaryService
   ) { }
   // ✅ Add new categories
   async addCategory(
@@ -222,7 +224,22 @@ export class ItemCategoriesService {
           message: "You are not authorized to delete this category.",
         });
       }
+      // 2. Image cleanup — purge from Cloudinary then from the metadata table
+      const linkedImages_Cat = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_IMAGE);
+      const linkedImages_Ban = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_BANNER);
+      const linkedImages = [...linkedImages_Cat, ...linkedImages_Ban];
+      if (linkedImages?.length) {
+        const publicIds = linkedImages.map((img) => img.publicId);
+        const deletedImages = await Promise.all(
+          publicIds.map((id) => this.cloudinaryService.deleteImage(id)),
+        );
+        console.log("deletedImages ", deletedImages);
+        if (deletedImages?.length > 0) {
+          await this.uploadRepo.deleteImages(publicIds);
+        }
+      }
       const categoryDeleted = await this.itemCategoriesRepo.deleteCategory(id);
+      
       return {
         statusCode: HttpStatus.OK,
         error: false,

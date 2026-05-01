@@ -167,7 +167,7 @@ export class ItemCategoryRepo {
       }
       const result = await this.prismaService.categoryMaster.update({
         where: { id, isActive: true },
-        data: {...categoryData, updatedBy: user.id},
+        data: { ...categoryData, updatedBy: user.id },
         select: this.categorySelectFields(user),
       });
       if (deletedImagePublicIds && deletedImagePublicIds.length > 0) {
@@ -277,6 +277,57 @@ export class ItemCategoryRepo {
         total,
         results: categories,
       };
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+  async getItemsOfCategory(id: string) {
+    try {
+      return await this.prismaService.categoryMaster.findUnique({
+        where: { id, isActive: true },
+        select: {
+          ...this.categorySelectFields(), items: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              isActive: true,
+              createdAt: true,
+              // creator
+              user: {
+                select: {
+                  id: true,
+                  firstname: true,
+                  lastname: true,
+                  images: {
+                    select: {
+                      ownerType: true,
+                      id: true,
+                      imageUrl: true,
+                      publicId: true,
+                    },
+                    where: { ownerType: ImageOwnerType.USER },
+                  },
+                },
+              },
+              images: {
+                select: {
+                  ownerType: true,
+                  id: true,
+                  imageUrl: true,
+                  publicId: true,
+                  itemId: true,
+                },
+                where: { ownerType: ImageOwnerType.ITEM, },
+              },
+            },
+          },
+        },
+      });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

@@ -134,6 +134,27 @@ export class ItemCategoriesController {
       });
     }
   }
+  @Public('findAllItemsInCategory')
+  @Get('/items/:id')
+  async findAllItemsInCategory(@Param('id') id: string) {
+    try {
+      const result = await this.itemCategoriesService.getItemsOfCategory(id);
+      if (!result) {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: 'Category not found',
+        });
+      }
+      return result;
+    } catch (error) {
+      AppLogger.error(`Failed to fetch category with id ${id}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch category',
+      });
+    }
+  }
   @Roles('admin','employee')
   @Delete('/deactivate/:id')
   async remove(@Param('id') id: string, @CurrentUser() user: User) {

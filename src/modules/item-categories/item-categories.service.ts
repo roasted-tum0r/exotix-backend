@@ -30,31 +30,6 @@ export class ItemCategoriesService {
   ) {
     try {
       const payload = await this.itemCategoriesRepo.addCategory(data, user.id);
-
-      // if (Array.isArray(data) && Array.isArray(payload)) {
-      //   // Bulk upload — process images for each category
-      //   for (let i = 0; i < data.length; i++) {
-      //     const bannerimage = (data[i] as CreateItemCategoryDto).bannerimage;
-      //   const categoryImage = (data[i] as CreateItemCategoryDto).categoryImage;
-      //     if (bannerimage) {
-      //       await this.uploadRepo.addImages(payload[i].id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
-      //     }
-      //     if (categoryImage) {
-      //       await this.uploadRepo.addImages(payload[i].id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
-      //     }
-      //   }
-      // } else if (!Array.isArray(data) && !Array.isArray(payload)) {
-      //   // Single upload
-      //   const bannerimage = (data as CreateItemCategoryDto).bannerimage;
-      //   const categoryImage = (data as CreateItemCategoryDto).categoryImage;
-      //   if (bannerimage) {
-      //     await this.uploadRepo.addImages(payload.id, [bannerimage], ImageOwnerType.CATEGORY_BANNER);
-      //   }
-      //   if (categoryImage) {
-      //     await this.uploadRepo.addImages(payload.id, [categoryImage], ImageOwnerType.CATEGORY_IMAGE);
-      //   }
-      // }
-
       return {
         statusCode: HttpStatus.CREATED,
         error: false,
@@ -112,7 +87,7 @@ export class ItemCategoriesService {
     try {
       const where = this.buildCategoryWhere(paginatinObject);
       console.log("SEARCH TEXT:", paginatinObject.searchText);
-console.log("WHERE:", JSON.stringify(where, null, 2));
+      console.log("WHERE:", JSON.stringify(where, null, 2));
       const payload = await this.itemCategoriesRepo.getAllCategories({
         ...paginatinObject,
         page: paginatinObject.page ?? 1,
@@ -218,6 +193,11 @@ console.log("WHERE:", JSON.stringify(where, null, 2));
           statusCode: HttpStatus.FORBIDDEN,
           error: true,
           message: `Category "${category.name}" has ${category._count.items} items in it, therefore cannot delete this category. Please remove all items first or move them to another category to prevent data loss.`,
+          meta: {
+            itemCount: category._count.items,
+            categoryId: category.id,
+          },
+          code: "CATEGORY_HAS_ITEMS",
         });
       }
       if (user.role !== "ADMIN" && category?.user?.id !== user?.id) {
@@ -225,6 +205,7 @@ console.log("WHERE:", JSON.stringify(where, null, 2));
           statusCode: HttpStatus.FORBIDDEN,
           error: true,
           message: "You are not authorized to delete this category.",
+          code: "CATEGORY_DELETE_FORBIDDEN",
         });
       }
       // 2. Image cleanup — purge from Cloudinary then from the metadata table
@@ -260,6 +241,36 @@ console.log("WHERE:", JSON.stringify(where, null, 2));
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
         message: 'Something went wrong while deleting category.',
+      });
+    }
+  }
+  async getItemsOfCategory(id: string) {
+    try {
+      const category = await this.getCategoryById(id);
+      if (!category) {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: `Category with ID ${id} not found.`,
+        });
+      }
+      const result = await this.itemCategoriesRepo.getItemsOfCategory(id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Items of category: ${category.data.name} fetched.`,
+        data: {
+          ...result,
+        },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error; // preserve original error
+      }
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong while fetching items of category.',
       });
     }
   }

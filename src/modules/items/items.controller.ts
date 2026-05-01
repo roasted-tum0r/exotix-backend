@@ -9,6 +9,7 @@ import {
   HttpStatus,
   InternalServerErrorException,
   HttpException,
+  Delete,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -103,12 +104,40 @@ export class ItemsController {
     }
   }
   @Roles('admin')
-  @Post('/delete')
+  @Delete('/delete')
   async remove(@Body('id') id: string) {
     try {
       return await this.service.remove(id);
     } catch (error) {
       AppLogger.error(`Failed delete item`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete item',
+      });
+    }
+  }
+  @Roles('admin','employee')
+  @Post('/move')
+  async moveItems(@Body('itemIds') itemIds: string[], @Body('categoryId') categoryId: string,) {
+    try {
+      return await this.service.moveItems(itemIds,categoryId);
+    } catch (error) {
+      AppLogger.error(`Failed move items`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete item',
+      });
+    }
+  }
+    @Roles('admin','employee')
+  @Delete('/deletebycategory/:categoryId')
+  async deleteByCategory(@Param('categoryId') categoryId: string,) {
+    try {
+      return await this.service.deleteByCategory(categoryId);
+    } catch (error) {
+      AppLogger.error(`Failed delete by category items`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

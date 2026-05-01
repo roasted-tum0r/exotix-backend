@@ -382,4 +382,28 @@ export class ItemsService {
       });
     }
   }
+  async moveItems(itemIds: string[], categoryId: string) {
+    try {
+      return await this.repo.moveItems(itemIds, categoryId);
+    } catch (error) {
+      AppLogger.error('Failed to move items', error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to move items',
+      });
+    }
+  }
+  async deleteByCategory(categoryId: string) {
+    try {
+      return await this.repo.deleteByCategory(categoryId);
+    } catch (error) {
+      AppLogger.error('Failed to delete by category items', error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to delete by category items',
+      });
+    }
+  }
 }

@@ -457,4 +457,35 @@ export class ItemsRepository {
       });
     }
   }
+
+  async moveItems(itemIds: string[], categoryId: string) {
+    try {
+      return await this.prisma.item.updateMany({
+        where: { id: { in: itemIds } },
+        data: { categoryId },
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+  async deleteByCategory(categoryId: string) {
+    try {
+      return await this.prisma.item.updateMany({
+        where: { categoryId },
+        data: {isActive: false}
+      });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
 }

@@ -25,7 +25,13 @@ export class ItemCategoryRepo {
       description: true,
       createdAt: true,
       updatedAt: true,
-      _count: true,
+      _count: {
+        select: {
+          items: true,
+          images: true,
+        }
+      },
+      isActive:true,
 
       // remove these unless you explicitly need raw IDs
       // createdBy: true,

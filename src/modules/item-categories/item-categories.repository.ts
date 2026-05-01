@@ -220,7 +220,7 @@ export class ItemCategoryRepo {
     try {
       const [categories, total] = await this.prismaService.$transaction([
         this.prismaService.categoryMaster.findMany({
-          where: { isActive: true },
+          where: where,
           orderBy: {
             [`${paginatinObject.sortBy || 'createdAt'}`]: paginatinObject.isAsc
               ? 'asc'
@@ -231,7 +231,7 @@ export class ItemCategoryRepo {
           select: this.categorySelectFields(user),
         }),
         this.prismaService.categoryMaster.count({
-          where: { isActive: true },
+          where: where,
         }),
       ]);
 

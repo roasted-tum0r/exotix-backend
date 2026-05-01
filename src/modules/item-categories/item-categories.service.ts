@@ -111,6 +111,8 @@ export class ItemCategoriesService {
   async getAllCategories(paginatinObject: ISearchObject, user?: User) {
     try {
       const where = this.buildCategoryWhere(paginatinObject);
+      console.log("SEARCH TEXT:", paginatinObject.searchText);
+console.log("WHERE:", JSON.stringify(where, null, 2));
       const payload = await this.itemCategoriesRepo.getAllCategories({
         ...paginatinObject,
         page: paginatinObject.page ?? 1,
@@ -272,11 +274,13 @@ export class ItemCategoriesService {
         {
           name: {
             contains: searchText.toLowerCase(),
+            // mode: 'insensitive',
           } as Prisma.StringFilter<'CategoryMaster'>,
         },
         {
           description: {
             contains: searchText.toLowerCase(),
+            // mode: 'insensitive',
           } as Prisma.StringFilter<'CategoryMaster'>,
         },
       ];

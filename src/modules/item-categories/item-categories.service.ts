@@ -9,7 +9,7 @@ import {
 import { CreateItemCategoryDto } from './dto/create-item-category.dto';
 import { UpdateItemCategoryDto } from './dto/update-item-category.dto';
 import { ItemCategoryRepo } from './item-categories.repository';
-import { ImageOwnerType, User } from '@prisma/client';
+import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
@@ -108,15 +108,16 @@ export class ItemCategoriesService {
     }
   }
   // ✅ Get all categories
-  async getAllCategories(paginatinObject: IPagination, user?: User) {
+  async getAllCategories(paginatinObject: ISearchObject, user?: User) {
     try {
+      const where = this.buildCategoryWhere(paginatinObject);
       const payload = await this.itemCategoriesRepo.getAllCategories({
         ...paginatinObject,
         page: paginatinObject.page ?? 1,
         limit: paginatinObject.limit ?? 100,
         isAsc: paginatinObject.isAsc ?? true,
         sortBy: paginatinObject.sortBy ?? '',
-      }, user);
+      }, user, where);
       return {
         statusCode: HttpStatus.OK,
         error: false,
@@ -239,7 +240,7 @@ export class ItemCategoriesService {
         }
       }
       const categoryDeleted = await this.itemCategoriesRepo.deleteCategory(id);
-      
+
       return {
         statusCode: HttpStatus.OK,
         error: false,
@@ -259,5 +260,27 @@ export class ItemCategoriesService {
         message: 'Something went wrong while deleting category.',
       });
     }
+  }
+  // helper to build the where clause
+  private buildCategoryWhere(filters: ISearchObject): Prisma.CategoryMasterWhereInput {
+    const { searchText } = filters || {};
+
+    const where: Prisma.CategoryMasterWhereInput = { isActive: true };
+
+    if (searchText) {
+      where.OR = [
+        {
+          name: {
+            contains: searchText.toLowerCase(),
+          } as Prisma.StringFilter<'CategoryMaster'>,
+        },
+        {
+          description: {
+            contains: searchText.toLowerCase(),
+          } as Prisma.StringFilter<'CategoryMaster'>,
+        },
+      ];
+    }
+    return where;
   }
 }

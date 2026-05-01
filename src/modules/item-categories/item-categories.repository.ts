@@ -216,7 +216,7 @@ export class ItemCategoryRepo {
     }
   }
 
-  async getAllCategories(paginatinObject: IPagination, user?: User) {
+  async getAllCategories(paginatinObject: IPagination, user?: User, where?: Prisma.CategoryMasterWhereInput) {
     try {
       const [categories, total] = await this.prismaService.$transaction([
         this.prismaService.categoryMaster.findMany({

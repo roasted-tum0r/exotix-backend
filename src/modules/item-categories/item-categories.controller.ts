@@ -96,7 +96,7 @@ export class ItemCategoriesController {
   @UseGuards(OptionalAuthGuard)
   @Post('/findall')
   async findAll(
-    @Body() paginationObject: Omit<IPagination, 'isAsc'>,
+    @Body() paginationObject: Omit<ISearchObject, 'isAsc'>,
     @Body('isAsc') isAsc: string,
     @CurrentUser() user?: User,
   ) {

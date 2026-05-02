@@ -30,7 +30,16 @@ export class ItemsRepository {
       createdAt: true,
       updatedAt: true,
       categoryId: true,
-      category: { select: { id: true, name: true } },
+      category: {
+        select: {
+          id: true, name: true, images: {
+            select: { ownerType: true, imageUrl: true, publicId: true },
+            where: {
+              ownerType: { in: [ImageOwnerType.CATEGORY_IMAGE] },
+            },
+          },
+        }
+      },
       rating: true,
       isAvailable: true,
       price: true,
@@ -104,9 +113,9 @@ export class ItemsRepository {
   ): T extends null
     ? null
     : Omit<NonNullable<T>, 'images'> & {
-        thumbnail: { ownerType: string; imageUrl: string; publicId: string } | null;
-        gallery: { ownerType: string; imageUrl: string; publicId: string }[];
-      } {
+      thumbnail: { ownerType: string; imageUrl: string; publicId: string } | null;
+      gallery: { ownerType: string; imageUrl: string; publicId: string }[];
+    } {
     if (!item) return null as any;
     const { images = [], ...rest } = item as NonNullable<T> & { images?: { ownerType: string; imageUrl: string; publicId: string }[] };
     return {

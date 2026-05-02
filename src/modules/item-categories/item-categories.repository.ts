@@ -328,7 +328,7 @@ export class ItemCategoryRepo {
                   publicId: true,
                   itemId: true,
                 },
-                where: { ownerType: ImageOwnerType.ITEM, },
+                where: { ownerType: ImageOwnerType.ITEM_THUMBNAIL, },
               },
             },
           },

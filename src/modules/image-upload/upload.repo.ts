@@ -49,7 +49,8 @@ export class UploadRepo {
         switch (ownerType) {
             case ImageOwnerType.USER:
                 return "userId";
-            case ImageOwnerType.ITEM:
+            case ImageOwnerType.ITEM_THUMBNAIL:
+            case ImageOwnerType.ITEM_GALLERY:
                 return "itemId";
             case ImageOwnerType.BRANCH:
                 return "branchId";

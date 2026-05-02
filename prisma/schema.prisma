@@ -58,11 +58,13 @@ enum SubscriptionSource {
 }
 enum ImageOwnerType {
   USER
-  ITEM
-  BRANCH
-  REVIEW
+  ITEM_THUMBNAIL    // item-thumbnail-image
+  ITEM_GALLERY      // item-gallery-images
+  BRANCH            // branch-images
+  REVIEW            // review-images
   CATEGORY_BANNER  // main hero / banner image of a category
   CATEGORY_IMAGE   // square thumbnail / icon image of a category
+
 }
 
 

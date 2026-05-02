@@ -24,7 +24,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 @Controller('items')
 export class ItemsController {
   constructor(private readonly service: ItemsService) {}
-  @Roles('admin')
+  @Roles('admin', 'employee')
   @Post('/create')
   async create(
     @Body() dto: Omit<CreateItemDto, 'categoryId'>,

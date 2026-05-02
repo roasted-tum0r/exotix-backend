@@ -10,13 +10,14 @@ import { ItemsRepository } from './items.repository';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { FilterItemDto, RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
-import { Prisma, User } from '@prisma/client';
+import { ImageOwnerType, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { UploadRepo } from '../image-upload/upload.repo';
 
 
 @Injectable()
 export class ItemsService {
-  constructor(private readonly repo: ItemsRepository) { }
+  constructor(private readonly repo: ItemsRepository, private readonly uploadRepo: UploadRepo) { }
 
   async create(dto: CreateItemDto, user: User) {
     try {
@@ -25,6 +26,12 @@ export class ItemsService {
         createdBy: user.id,
         updatedBy: user.id,
       });
+      if (dto.thumbnailImage) {
+        await this.uploadRepo.addImages(payload.id, [dto.thumbnailImage], ImageOwnerType.ITEM_THUMBNAIL);
+      }
+      if (dto.galleryImages?.length) {
+        await this.uploadRepo.addImages(payload.id, dto.galleryImages, ImageOwnerType.ITEM_GALLERY);
+      }
       return {
         statusCode: HttpStatus.CREATED,
         error: false,
@@ -73,7 +80,7 @@ export class ItemsService {
 
   async getAllItemsService(paginatinObject: SearchItemDto) {
     try {
-      const whereClause = this.buildItemWhere({
+      const whereClause = this.repo.buildItemWhere({
         categoryIds: paginatinObject.categoryIds,
         isAvailable: paginatinObject.isAvailable,
         maxPrice: paginatinObject.maxPrice,
@@ -226,58 +233,6 @@ export class ItemsService {
     }
   }
 
-  // helper to build the where clause
-  private buildItemWhere(filters: FilterItemDto): Prisma.ItemWhereInput {
-    const { search, categoryIds, isAvailable } = filters || {};
-    // minPrice/maxPrice may come as string (query params) or number
-    const { minPrice, maxPrice } = filters || {};
-
-    const where: Prisma.ItemWhereInput = { isActive: true };
-
-    if (search) {
-      where.OR = [
-        {
-          name: {
-            contains: search.toLowerCase(),
-          } as Prisma.StringFilter<'Item'>,
-        },
-        {
-          description: {
-            contains: search.toLowerCase(),
-          } as Prisma.StringFilter<'Item'>,
-        },
-      ];
-    }
-
-    if (categoryIds && categoryIds.length) {
-      where.categoryId = { in: Array.isArray(categoryIds) ? [...categoryIds] : [categoryIds] as any };
-    }
-
-    if (isAvailable !== undefined) {
-      where.isAvailable = isAvailable === 'true';
-    }
-
-    const parseNumberSafe = (v?: string | number): number | undefined => {
-      if (v === undefined || v === null) return undefined;
-      // if already a number
-      if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
-      // parse string to float
-      const n = parseFloat(String(v));
-      return Number.isFinite(n) ? n : undefined;
-    };
-
-    const parsedMin = parseNumberSafe(minPrice);
-    const parsedMax = parseNumberSafe(maxPrice);
-
-    if (parsedMin !== undefined || parsedMax !== undefined) {
-      where.price = {
-        ...(parsedMin !== undefined ? { gte: parsedMin } : {}),
-        ...(parsedMax !== undefined ? { lte: parsedMax } : {}),
-      } as any;
-    }
-
-    return where;
-  }
 
   /**
    * GET /items/:id/similar

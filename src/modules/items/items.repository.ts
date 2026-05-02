@@ -3,7 +3,7 @@ import { CreateItemRepoDto } from './dto/create-item.dto';
 import { UpdateItemRepoDto } from './dto/update-item.dto';
 import { FilterItemDto, RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { ImageOwnerType, Prisma } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
 const RECOMMENDATION_SELECT = {
@@ -19,7 +19,103 @@ const RECOMMENDATION_SELECT = {
 
 @Injectable()
 export class ItemsRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
+
+  // ─── Shared select projection ────────────────────────────────────────────────
+  itemSelectFields(): Prisma.ItemSelect {
+    return {
+      id: true,
+      name: true,
+      description: true,
+      createdAt: true,
+      updatedAt: true,
+      categoryId: true,
+      category: { select: { id: true, name: true } },
+      rating: true,
+      isAvailable: true,
+      price: true,
+      image: true,
+      offer: true,
+      _count: true,
+      images: {
+        select: { ownerType: true, imageUrl: true, publicId: true },
+        where: {
+          ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL, ImageOwnerType.ITEM_GALLERY] },
+        },
+      },
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Shared where clause builder ─────────────────────────────────────────────
+  buildItemWhere(filters?: FilterItemDto): Prisma.ItemWhereInput {
+    const { search, categoryIds, isAvailable, minPrice, maxPrice } = filters || {};
+
+    const where: Prisma.ItemWhereInput = { isActive: true };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search.toLowerCase() } as Prisma.StringFilter<'Item'> },
+        { description: { contains: search.toLowerCase() } as Prisma.StringFilter<'Item'> },
+      ];
+    }
+
+    if (categoryIds && categoryIds.length) {
+      where.categoryId = {
+        in: Array.isArray(categoryIds) ? [...categoryIds] : ([categoryIds] as any),
+      };
+    }
+
+    if (isAvailable !== undefined) {
+      where.isAvailable = isAvailable === 'true';
+    }
+
+    const parseNumberSafe = (v?: string | number): number | undefined => {
+      if (v === undefined || v === null) return undefined;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+      const n = parseFloat(String(v));
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    const parsedMin = parseNumberSafe(minPrice);
+    const parsedMax = parseNumberSafe(maxPrice);
+
+    if (parsedMin !== undefined || parsedMax !== undefined) {
+      where.price = {
+        ...(parsedMin !== undefined ? { gte: parsedMin } : {}),
+        ...(parsedMax !== undefined ? { lte: parsedMax } : {}),
+      } as any;
+    }
+
+    return where;
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Image shape transformer ─────────────────────────────────────────────────
+  /**
+   * Splits the flat `images[]` returned by Prisma into two typed properties:
+   *   - `thumbnail`: the single ITEM_THUMBNAIL entry (or null)
+   *   - `gallery`:   all ITEM_GALLERY entries (may be empty)
+   * The raw `images` array is removed from the output so the frontend
+   * never has to filter it manually.
+   */
+  transformItemImages<T extends { images?: { ownerType: string; imageUrl: string; publicId: string }[] } | null>(
+    item: T,
+  ): T extends null
+    ? null
+    : Omit<NonNullable<T>, 'images'> & {
+        thumbnail: { ownerType: string; imageUrl: string; publicId: string } | null;
+        gallery: { ownerType: string; imageUrl: string; publicId: string }[];
+      } {
+    if (!item) return null as any;
+    const { images = [], ...rest } = item as NonNullable<T> & { images?: { ownerType: string; imageUrl: string; publicId: string }[] };
+    return {
+      ...rest,
+      thumbnail: images.find((img) => img.ownerType === ImageOwnerType.ITEM_THUMBNAIL) ?? null,
+      gallery: images.filter((img) => img.ownerType === ImageOwnerType.ITEM_GALLERY),
+    } as any;
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   async create(data: CreateItemRepoDto) {
     try {
@@ -35,25 +131,11 @@ export class ItemsRepository {
   }
   async findOne(id: string) {
     try {
-      return this.prisma.item.findUnique({
+      const item = await this.prisma.item.findUnique({
         where: { id, isActive: true },
-        // include: { category: true, images: true, reviews: true },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          category: true,
-          images: true,
-          categoryId: true,
-          // reviews: true,
-          rating: true,
-          isAvailable: true,
-          price: true,
-          image: true,
-        },
+        select: this.itemSelectFields(),
       });
+      return this.transformItemImages(item);
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -116,25 +198,12 @@ export class ItemsRepository {
   }
   async update(id: string, data: UpdateItemRepoDto) {
     try {
-      return this.prisma.item.update({
+      const item = await this.prisma.item.update({
         where: { id },
         data,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          category: true,
-          images: true,
-          categoryId: true,
-          reviews: true,
-          rating: true,
-          isAvailable: true,
-          price: true,
-          image: true,
-        },
+        select: this.itemSelectFields(),
       });
+      return this.transformItemImages(item);
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -169,25 +238,7 @@ export class ItemsRepository {
           },
           skip: (+pagination.page - 1) * +pagination.limit,
           take: +pagination.limit,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            createdAt: true,
-            updatedAt: true,
-            category: {
-              select: { id: true, name: true },
-            },
-            images: true,
-            categoryId: true,
-            reviews: true,
-            rating: true,
-            isAvailable: true,
-            price: true,
-            image: true,
-            _count: true,
-            offer: true,
-          },
+          select: this.itemSelectFields(),
         }),
         this.prisma.item.count({ where }),
       ]);
@@ -198,7 +249,7 @@ export class ItemsRepository {
           currentPage: +pagination.page,
           totalPages: Math.ceil(total / pagination.limit),
         },
-        results,
+        results: results.map((item) => this.transformItemImages(item)),
       };
     } catch (error) {
       AppLogger.error(error);
@@ -477,7 +528,7 @@ export class ItemsRepository {
     try {
       return await this.prisma.item.updateMany({
         where: { categoryId },
-        data: {isActive: false}
+        data: { isActive: false }
       });
     } catch (error) {
       AppLogger.error(error);

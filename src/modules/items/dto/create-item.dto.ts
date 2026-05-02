@@ -2,12 +2,9 @@ import {
   IsString,
   IsNumber,
   IsOptional,
-  IsUrl,
-  Min,
-  Max,
   IsBoolean,
-  IsDate,
   IsArray,
+  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -35,7 +32,7 @@ export class CreateItemDto {
   @IsNumber()
   price: number;
 
-  @IsNumber()
+  @IsUUID()
   categoryId: string;
 
   @IsOptional()

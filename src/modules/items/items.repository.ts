@@ -127,7 +127,7 @@ export class ItemsRepository {
 
   async create(data: CreateItemRepoDto) {
     try {
-      return this.prisma.item.create({ data });
+      return this.prisma.item.create({ data, select: this.itemSelectFields() });
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

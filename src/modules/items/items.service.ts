@@ -21,16 +21,17 @@ export class ItemsService {
 
   async create(dto: CreateItemDto, user: User) {
     try {
+      const { thumbnailImage, galleryImages, ...createDto } = dto;
       const payload = await this.repo.create({
-        ...dto,
+        ...createDto,
         createdBy: user.id,
         updatedBy: user.id,
       });
-      if (dto.thumbnailImage) {
-        await this.uploadRepo.addImages(payload.id, [dto.thumbnailImage], ImageOwnerType.ITEM_THUMBNAIL);
+      if (thumbnailImage) {
+        await this.uploadRepo.addImages(payload.id, [thumbnailImage], ImageOwnerType.ITEM_THUMBNAIL);
       }
-      if (dto.galleryImages?.length) {
-        await this.uploadRepo.addImages(payload.id, dto.galleryImages, ImageOwnerType.ITEM_GALLERY);
+      if (galleryImages?.length) {
+        await this.uploadRepo.addImages(payload.id, galleryImages, ImageOwnerType.ITEM_GALLERY);
       }
       return {
         statusCode: HttpStatus.CREATED,

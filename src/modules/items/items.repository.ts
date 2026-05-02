@@ -29,7 +29,6 @@ export class ItemsRepository {
       description: true,
       createdAt: true,
       updatedAt: true,
-      categoryId: true,
       category: {
         select: {
           id: true, name: true, images: {

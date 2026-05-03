@@ -3,7 +3,7 @@ import { CreateItemRepoDto } from './dto/create-item.dto';
 import { UpdateItemRepoDto } from './dto/update-item.dto';
 import { FilterItemDto, RecommendationPaginationDto, SearchItemDto } from './dto/filter-item.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ImageOwnerType, Prisma } from '@prisma/client';
+import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
 const RECOMMENDATION_SELECT = {
@@ -41,12 +41,14 @@ export class ItemsRepository {
       },
       rating: true,
       isAvailable: true,
+      isActive:true,
+      
       price: true,
       image: true,
       offer: true,
       _count: {
         select: {
-          reviews: true,
+          reviews: true,  
         },
       },
       images: {
@@ -60,10 +62,15 @@ export class ItemsRepository {
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ─── Shared where clause builder ─────────────────────────────────────────────
-  buildItemWhere(filters?: FilterItemDto): Prisma.ItemWhereInput {
+  // When `user` is an ADMIN or EMPLOYEE the isActive filter is omitted so they
+  // see ALL items (active + inactive). The isActive field is still returned via
+  // itemSelectFields() so the dashboard can highlight deactivated records.
+  // Public / unauthenticated callers always receive only active items.
+  buildItemWhere(filters?: FilterItemDto, user?: User): Prisma.ItemWhereInput {
     const { search, categoryIds, isAvailable, minPrice, maxPrice } = filters || {};
 
-    const where: Prisma.ItemWhereInput = { isActive: true };
+    const isPrivileged = user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
+    const where: Prisma.ItemWhereInput = isPrivileged ? {} : { isActive: true };
 
     if (search) {
       where.OR = [
@@ -141,10 +148,11 @@ export class ItemsRepository {
       });
     }
   }
-  async findOne(id: string) {
+  async findOne(id: string, user?: User) {
     try {
+      const isPrivileged = user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
       const item = await this.prisma.item.findUnique({
-        where: { id, isActive: true },
+        where: isPrivileged ? { id } : { id, isActive: true },
         select: this.itemSelectFields(),
       });
       return this.transformItemImages(item);

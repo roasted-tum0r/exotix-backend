@@ -79,7 +79,7 @@ export class ItemsService {
     }
   }
 
-  async getAllItemsService(paginatinObject: SearchItemDto) {
+  async getAllItemsService(paginatinObject: SearchItemDto, user?: User) {
     try {
       const whereClause = this.repo.buildItemWhere({
         categoryIds: paginatinObject.categoryIds,
@@ -87,7 +87,7 @@ export class ItemsService {
         maxPrice: paginatinObject.maxPrice,
         minPrice: paginatinObject.minPrice,
         search: paginatinObject.search,
-      });
+      }, user);
       const payload = await this.repo.findAllItems(
         paginatinObject,
         whereClause,
@@ -108,9 +108,9 @@ export class ItemsService {
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user?: User) {
     try {
-      const payload = await this.repo.findOne(id);
+      const payload = await this.repo.findOne(id, user);
       if (!payload)
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,

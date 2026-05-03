@@ -85,7 +85,8 @@ export class ItemCategoriesService {
   // ✅ Get all categories
   async getAllCategories(paginatinObject: ISearchObject, user?: User) {
     try {
-      const where = this.buildCategoryWhere(paginatinObject);
+      const isPrivileged = user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
+      const where = this.buildCategoryWhere(paginatinObject, isPrivileged);
       console.log("SEARCH TEXT:", paginatinObject.searchText);
       console.log("WHERE:", JSON.stringify(where, null, 2));
       const payload = await this.itemCategoriesRepo.getAllCategories({
@@ -275,10 +276,15 @@ export class ItemCategoriesService {
     }
   }
   // helper to build the where clause
-  private buildCategoryWhere(filters: ISearchObject): Prisma.CategoryMasterWhereInput {
+  // isPrivileged = true means the caller is an admin or employee:
+  // they can see ALL categories (active + inactive), the isActive field
+  // is still returned so they know which ones need reactivation.
+  private buildCategoryWhere(filters: ISearchObject, isPrivileged = false): Prisma.CategoryMasterWhereInput {
     const { searchText } = filters || {};
 
-    const where: Prisma.CategoryMasterWhereInput = { isActive: true };
+    // Public users always see only active categories.
+    // Admins / employees see everything — no isActive filter.
+    const where: Prisma.CategoryMasterWhereInput = isPrivileged ? {} : { isActive: true };
 
     if (searchText) {
       where.OR = [

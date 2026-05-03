@@ -10,6 +10,7 @@ import {
   InternalServerErrorException,
   HttpException,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
@@ -20,6 +21,7 @@ import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { Roles } from 'src/common/decorators/user-role.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
+import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
 
 @Controller('items')
 export class ItemsController {
@@ -58,10 +60,11 @@ export class ItemsController {
   }
 
   @Public('findAllItemsListWithPagination')
+  @UseGuards(OptionalAuthGuard)
   @Get('/list')
-  async getAllItems(@Query() filterObject: SearchItemDto) {
+  async getAllItems(@Query() filterObject: SearchItemDto, @CurrentUser() user?: User) {
     try {
-      return await this.service.getAllItemsService(filterObject);
+      return await this.service.getAllItemsService(filterObject, user);
     } catch (error) {
       AppLogger.error(`Failed search items`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -72,10 +75,11 @@ export class ItemsController {
     }
   }
   @Public('itemDetails')
+  @UseGuards(OptionalAuthGuard)
   @Get('/details/:id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user?: User) {
     try {
-      return await this.service.findOne(id);
+      return await this.service.findOne(id, user);
     } catch (error) {
       AppLogger.error(`Failed fetch item details`, error.stack);
       if (error instanceof HttpException) throw error;

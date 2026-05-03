@@ -207,6 +207,50 @@ export class ItemsService {
     }
   }
 
+  async restoreItem(id: string) {
+    try {
+      const payload = await this.repo.restoreItem(id);
+      if (!payload)
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: 'Item not found',
+        });
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Item was restored',
+        data: { ...payload },
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to restore item`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to restore item',
+      });
+    }
+  }
+
+  async hardDeleteItem(id: string) {
+    try {
+      await this.repo.hardDeleteItem(id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Item was permanently deleted',
+        data: { id },
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to hard-delete item`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to permanently delete item',
+      });
+    }
+  }
+
   async addToFavourite(userId: string, itemId: string) {
     try {
       const payload = await this.repo.addToFavourite(userId, itemId);

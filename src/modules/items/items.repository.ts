@@ -248,6 +248,37 @@ export class ItemsRepository {
       });
     }
   }
+
+  async restoreItem(id: string) {
+    try {
+      const item = await this.prisma.item.update({
+        where: { id },
+        data: { isActive: true },
+        select: this.itemSelectFields(),
+      });
+      return this.transformItemImages(item);
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
+
+  async hardDeleteItem(id: string) {
+    try {
+      return this.prisma.item.delete({ where: { id } });
+    } catch (error) {
+      AppLogger.error(error);
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: `Something went wrong.`,
+      });
+    }
+  }
   async findAllItems(pagination: SearchItemDto, where: Prisma.ItemWhereInput) {
     try {
       const [results, total] = await Promise.all([

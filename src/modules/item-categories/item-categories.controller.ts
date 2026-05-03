@@ -169,6 +169,36 @@ export class ItemCategoriesController {
       });
     }
   }
+
+  @Roles('admin', 'employee')
+  @Patch('/restore/:id')
+  async restoreCategory(@Param('id') id: string) {
+    try {
+      return await this.itemCategoriesService.restoreCategory(id);
+    } catch (error) {
+      AppLogger.error(`Failed to restore category with id ${id}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to restore category',
+      });
+    }
+  }
+
+  @Roles('admin')
+  @Delete('/hard-delete/:id')
+  async hardDeleteCategory(@Param('id') id: string) {
+    try {
+      return await this.itemCategoriesService.hardDeleteCategory(id);
+    } catch (error) {
+      AppLogger.error(`Failed to hard-delete category with id ${id}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to permanently delete category',
+      });
+    }
+  }
   @Public('searchCategory')
   @Post('/search')
   async search(@Body() searchObject: ISearchObject | IPagination) {

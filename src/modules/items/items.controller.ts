@@ -121,6 +121,36 @@ export class ItemsController {
       });
     }
   }
+
+  @Roles('admin', 'employee')
+  @Patch('/restore/:id')
+  async restoreItem(@Param('id') id: string) {
+    try {
+      return await this.service.restoreItem(id);
+    } catch (error) {
+      AppLogger.error(`Failed to restore item`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to restore item',
+      });
+    }
+  }
+
+  @Roles('admin')
+  @Delete('/hard-delete/:id')
+  async hardDeleteItem(@Param('id') id: string) {
+    try {
+      return await this.service.hardDeleteItem(id);
+    } catch (error) {
+      AppLogger.error(`Failed to hard-delete item`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to permanently delete item',
+      });
+    }
+  }
   @Roles('admin','employee')
   @Post('/move')
   async moveItems(@Body('itemIds') itemIds: string[], @Body('categoryId') categoryId: string,) {

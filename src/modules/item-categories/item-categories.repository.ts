@@ -157,6 +157,22 @@ export class ItemCategoryRepo {
     }
   }
 
+  /** Fetches a category by ID regardless of its isActive state. */
+  async getCategoryByIdUnfiltered(id: string) {
+    try {
+      return await this.prismaService.categoryMaster.findUnique({
+        where: { id },
+        select: this.categorySelectFields(),
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
   async updateCategory(id: string, data: UpdateItemCategoryDto, user: User) {
     try {
       const { bannerimage, categoryImage, deletedImagePublicIds, ...categoryData } = data;
@@ -213,6 +229,34 @@ export class ItemCategoryRepo {
         data: { isActive: false },
         select: this.categorySelectFields(),
       });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
+  async restoreCategory(id: string) {
+    try {
+      return await this.prismaService.categoryMaster.update({
+        where: { id },
+        data: { isActive: true },
+        select: this.categorySelectFields(),
+      });
+    } catch (error) {
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong.',
+      });
+    }
+  }
+
+  async hardDeleteCategory(id: string) {
+    try {
+      return await this.prismaService.categoryMaster.delete({ where: { id } });
     } catch (error) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

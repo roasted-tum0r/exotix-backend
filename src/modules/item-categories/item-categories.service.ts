@@ -245,6 +245,77 @@ export class ItemCategoriesService {
       });
     }
   }
+
+  // ✅ Restore (reactivate) a deactivated category
+  async restoreCategory(id: string) {
+    try {
+      const restored = await this.itemCategoriesRepo.restoreCategory(id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Category: ${restored.name} was restored.`,
+        data: { ...restored },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong while restoring category.',
+      });
+    }
+  }
+
+  // ✅ Permanently (hard) delete a category — only if it has no items
+  async hardDeleteCategory(id: string) {
+    try {
+      // Fetch WITHOUT isActive filter so deactivated categories are also found
+      const category = await this.itemCategoriesRepo.getCategoryByIdUnfiltered(id);
+      if (!category) {
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: `Category with ID ${id} not found.`,
+        });
+      }
+      if (category._count.items !== 0) {
+        throw new ForbiddenException({
+          statusCode: HttpStatus.FORBIDDEN,
+          error: true,
+          message: `Category "${category.name}" still has ${category._count.items} item(s). Move or delete all items before permanently removing this category.`,
+          meta: { itemCount: category._count.items, categoryId: category.id },
+          code: 'CATEGORY_HAS_ITEMS',
+        });
+      }
+      // Clean up Cloudinary images first
+      const linkedImages_Cat = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_IMAGE);
+      const linkedImages_Ban = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_BANNER);
+      const linkedImages = [...linkedImages_Cat, ...linkedImages_Ban];
+      if (linkedImages?.length) {
+        const publicIds = linkedImages.map((img) => img.publicId);
+        const deletedImages = await Promise.all(
+          publicIds.map((pid) => this.cloudinaryService.deleteImage(pid)),
+        );
+        if (deletedImages?.length > 0) {
+          await this.uploadRepo.deleteImages(publicIds);
+        }
+      }
+      await this.itemCategoriesRepo.hardDeleteCategory(id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Category "${category.name}" was permanently deleted.`,
+        data: { id },
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new BadRequestException({
+        statusCode: HttpStatus.BAD_REQUEST,
+        error: true,
+        message: 'Something went wrong while permanently deleting category.',
+      });
+    }
+  }
   async getItemsOfCategory(id: string) {
     try {
       const category = await this.getCategoryById(id);

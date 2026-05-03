@@ -137,10 +137,25 @@ export class ItemsService {
 
   async update(id: string, dto: UpdateItemDto, user: User) {
     try {
+      const { thumbnailImage, galleryImages, deletedImagePublicIds, ...updateDto } = dto;
+      
       const payload = await this.repo.update(id, {
-        ...dto,
+        ...updateDto,
         updatedBy: user.id,
       });
+
+      if (deletedImagePublicIds && deletedImagePublicIds.length > 0) {
+        await this.uploadRepo.deleteImages(deletedImagePublicIds);
+      }
+
+      if (thumbnailImage) {
+        await this.uploadRepo.addImages(id, [thumbnailImage], ImageOwnerType.ITEM_THUMBNAIL);
+      }
+
+      if (galleryImages && galleryImages.length > 0) {
+        await this.uploadRepo.addImages(id, galleryImages, ImageOwnerType.ITEM_GALLERY);
+      }
+
       return {
         statusCode: HttpStatus.OK,
         error: false,

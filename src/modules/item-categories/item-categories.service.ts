@@ -287,19 +287,11 @@ export class ItemCategoriesService {
           code: 'CATEGORY_HAS_ITEMS',
         });
       }
-      // Clean up Cloudinary images first
-      const linkedImages_Cat = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_IMAGE);
-      const linkedImages_Ban = await this.uploadRepo.getImagesById(category.id, ImageOwnerType.CATEGORY_BANNER);
-      const linkedImages = [...linkedImages_Cat, ...linkedImages_Ban];
-      if (linkedImages?.length) {
-        const publicIds = linkedImages.map((img) => img.publicId);
-        const deletedImages = await Promise.all(
-          publicIds.map((pid) => this.cloudinaryService.deleteImage(pid)),
-        );
-        if (deletedImages?.length > 0) {
-          await this.uploadRepo.deleteImages(publicIds);
-        }
-      }
+      // Purge all category images from Cloudinary and the image DB
+      await this.uploadRepo.purgeImagesByRef(id, [
+        ImageOwnerType.CATEGORY_IMAGE,
+        ImageOwnerType.CATEGORY_BANNER,
+      ]);
       await this.itemCategoriesRepo.hardDeleteCategory(id);
       return {
         statusCode: HttpStatus.OK,

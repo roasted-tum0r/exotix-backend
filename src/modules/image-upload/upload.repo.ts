@@ -45,6 +45,33 @@ export class UploadRepo {
             select: { publicId: true, imageUrl: true },
         });
     }
+
+    /**
+     * Convenience method used by hard-delete flows.
+     * Fetches all images for the given ref + ownerTypes, removes them from
+     * Cloudinary, then deletes the DB records — all in one call.
+     */
+    async purgeImagesByRef(refId: string, ownerTypes: ImageOwnerType[]): Promise<void> {
+        if (!refId) return;
+
+        // Collect publicIds across every ownerType in parallel
+        const imageSets = await Promise.all(
+            ownerTypes.map((ownerType) => this.getImagesById(refId, ownerType)),
+        );
+        const allImages = imageSets.flat();
+        if (!allImages.length) return;
+
+        const publicIds = allImages.map((img) => img.publicId);
+
+        // Delete from Cloudinary (fire-and-forget failures — don't block DB cleanup)
+        await Promise.allSettled(
+            publicIds.map((pid) => this.cloudinaryService.deleteImage(pid)),
+        );
+
+        // Remove DB records
+        await this.deleteImages(publicIds);
+    }
+
     private getOwnerField(ownerType: ImageOwnerType): string {
         switch (ownerType) {
             case ImageOwnerType.USER:

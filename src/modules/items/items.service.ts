@@ -234,6 +234,11 @@ export class ItemsService {
 
   async hardDeleteItem(id: string) {
     try {
+      // Purge thumbnail + gallery images from Cloudinary and image DB first
+      await this.uploadRepo.purgeImagesByRef(id, [
+        ImageOwnerType.ITEM_THUMBNAIL,
+        ImageOwnerType.ITEM_GALLERY,
+      ]);
       await this.repo.hardDeleteItem(id);
       return {
         statusCode: HttpStatus.OK,

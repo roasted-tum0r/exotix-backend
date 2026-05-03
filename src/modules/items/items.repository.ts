@@ -44,7 +44,11 @@ export class ItemsRepository {
       price: true,
       image: true,
       offer: true,
-      _count: true,
+      _count: {
+        select: {
+          reviews: true,
+        },
+      },
       images: {
         select: { ownerType: true, imageUrl: true, publicId: true },
         where: {

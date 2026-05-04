@@ -8,6 +8,7 @@ import { BannersRepository } from './banners.repository';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { ImageOwnerType, Prisma, User, UserRole } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { UploadRepo } from '../image-upload/upload.repo';
@@ -17,7 +18,7 @@ export class BannersService {
   constructor(
     private readonly repository: BannersRepository,
     private readonly uploadRepo: UploadRepo,
-  ) {}
+  ) { }
 
   async create(createBannerDto: CreateBannerDto, userId: string) {
     try {
@@ -38,11 +39,11 @@ export class BannersService {
     }
   }
 
-  async findAll(pagination: IPagination, user?: User) {
+  async findAll(pagination: ISearchObject, user?: User) {
     try {
       const isPrivileged =
         user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLOYEE;
-      const where = this.buildBannerWhere(isPrivileged);
+      const where = this.buildBannerWhere(pagination, isPrivileged);
       const payload = await this.repository.findAll(pagination, user, where);
       return {
         statusCode: HttpStatus.OK,
@@ -64,7 +65,7 @@ export class BannersService {
     try {
       const isPrivileged =
         user?.role === UserRole.ADMIN || user?.role === UserRole.EMPLOYEE;
-      const where = this.buildBannerWhere(isPrivileged);
+      const where = this.buildBannerWhere(undefined, isPrivileged);
 
       // Merge ID with visibility filters
       const finalWhere = { ...where, id };
@@ -233,34 +234,38 @@ export class BannersService {
     }
   }
 
-  private buildBannerWhere(isPrivileged = false): Prisma.BannerWhereInput {
-    // Admins/Employees see everything (including deactivated banners)
-    // Wait, categories: Admins see everything. Public sees only active.
-    if (isPrivileged) return {};
+  private buildBannerWhere(
+    filters?: ISearchObject,
+    isPrivileged = false,
+  ): Prisma.BannerWhereInput {
+    const { searchText } = filters || {};
+    const conditions: Prisma.BannerWhereInput[] = [];
 
-    // Public users only see ACTIVE (lifecycle) AND ONGOING (operational) banners within date range
-    const now = new Date();
-    return {
-      isActive: true,
-      isOngoing: true,
-      OR: [
-        {
-          startDate: { lte: now },
-          endDate: { gte: now },
-        },
-        {
-          startDate: null,
-          endDate: null,
-        },
-        {
-          startDate: { lte: now },
-          endDate: null,
-        },
-        {
-          startDate: null,
-          endDate: { gte: now },
-        },
-      ],
-    };
+    // Lifecycle & Operational filters for public users
+    if (!isPrivileged) {
+      const now = new Date();
+      conditions.push({ isActive: true });
+      conditions.push({ isOngoing: true });
+      conditions.push({
+        OR: [
+          { startDate: { lte: now }, endDate: { gte: now } },
+          { startDate: null, endDate: null },
+          { startDate: { lte: now }, endDate: null },
+          { startDate: null, endDate: { gte: now } },
+        ],
+      });
+    }
+
+    // Search filter
+    if (searchText) {
+      conditions.push({
+        OR: [
+          { title: { contains: searchText.toLowerCase() } as any },
+          { description: { contains: searchText.toLowerCase() } as any },
+        ],
+      });
+    }
+
+    return conditions.length > 0 ? { AND: conditions } : {};
   }
 }

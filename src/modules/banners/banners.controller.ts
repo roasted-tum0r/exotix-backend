@@ -22,6 +22,7 @@ import { IPagination } from 'src/common/interfaces/app.interface';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
+import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { AppLogger } from 'src/common/utils/app.logger';
 
 @Controller('banners')
@@ -48,19 +49,18 @@ export class BannersController {
 
   @Public('Banners.findAll')
   @UseGuards(OptionalAuthGuard)
-  @Get()
+  @Post('findall')
   async findAll(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('sortBy') sortBy: string = 'priority',
-    @Query('isAsc') isAsc: string = 'true',
+    @Body() paginationObject: Omit<ISearchObject, 'isAsc'>,
+    @Body('isAsc') isAsc: string,
     @CurrentUser() user?: User,
   ) {
     try {
-      const pagination: IPagination = {
-        page: +page,
-        limit: +limit,
-        sortBy,
+      const pagination: ISearchObject = {
+        ...paginationObject,
+        page: +(paginationObject.page ?? 1),
+        limit: +(paginationObject.limit ?? 10),
+        sortBy: paginationObject.sortBy ?? 'priority',
         isAsc: isAsc === 'true',
       };
       return await this.bannersService.findAll(pagination, user);

@@ -25,6 +25,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/image-upload/upload.module';
 import { OptionalAuthGuard } from './auth/optionalguards/optional-auth.guard';
+import { BannersModule } from './modules/banners/banners.module';
 
 @Module({
   imports: [
@@ -60,7 +61,8 @@ import { OptionalAuthGuard } from './auth/optionalguards/optional-auth.guard';
     NewsletterSubsModule,
     WishlistModule,
     ReviewsModule,
-    UploadModule
+    UploadModule,
+    BannersModule
   ],
   controllers: [AppController],
   providers: [

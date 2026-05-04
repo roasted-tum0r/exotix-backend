@@ -64,7 +64,7 @@ enum ImageOwnerType {
   REVIEW            // review-images
   CATEGORY_BANNER  // main hero / banner image of a category
   CATEGORY_IMAGE   // square thumbnail / icon image of a category
-
+  BANNER
 }
 
 
@@ -101,6 +101,8 @@ model User {
   ItemsUpdated Item[] @relation("ItemUpdater")
   offersCreated OfferMaster[] @relation("OfferCreator")
   offersUpdated OfferMaster[] @relation("OfferUpdater")
+  bannersCreated Banner[] @relation("BannerCreator")
+  bannersUpdated Banner[] @relation("BannerUpdater")
   @@unique([email, phone]) // Composite unique constraint
   @@index([isActive])
 }
@@ -389,12 +391,15 @@ model Image {
   review      Review?        @relation(fields: [reviewId], references: [id])
   categoryId  String?
   category    CategoryMaster? @relation(fields: [categoryId], references: [id])
+  bannerId    String?
+  banner      Banner?        @relation(fields: [bannerId], references: [id])
   uploadedAt  DateTime       @default(now())
   @@index([ownerType, userId])     // fetch all images for a user instantly
   @@index([ownerType, itemId])     // fetch all images for an item instantly
   @@index([ownerType, branchId])
   @@index([ownerType, reviewId])
   @@index([ownerType, categoryId])  // fetch all images for a category instantly
+  @@index([ownerType, bannerId])
 }
 
 model Review {
@@ -561,6 +566,7 @@ enum EntityType {
   NEWSLETTER_SUBSCRIBER
   FAVOURITE
   WISHLIST
+  BANNER
   AUTH               // auth-scoped events (login, OTP, token refresh)
   SYSTEM             // platform-wide settings / exports / imports
 }
@@ -595,4 +601,30 @@ model ActivityLog {
   @@index([createdAt])
   @@index([actorId, createdAt])       // timeline for a specific user
   @@index([entityType, type, createdAt]) // audit trail per entity type
+}
+model Banner {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  link        String?  // Link to a product, category, or external URL
+  imageUrl    String?  // Main image URL
+  isActive    Boolean  @default(true) // For lifecycle management (deactivate/restore)
+  isOngoing   Boolean  @default(true) // For turning on/off manually
+  startDate   DateTime?
+  endDate     DateTime?
+  priority    Int      @default(0) // For sorting in the carousel
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedBy   String
+  updatedAt   DateTime @updatedAt
+  user        User     @relation("BannerCreator", fields: [createdBy], references: [id])
+  updater     User     @relation("BannerUpdater", fields: [updatedBy], references: [id])
+  images      Image[]  // Relation to images table
+  
+  @@index([isActive])
+  @@index([isOngoing])
+  @@index([startDate, endDate])
+  @@index([priority])
+  @@index([createdBy])
+  @@index([updatedBy])
 }

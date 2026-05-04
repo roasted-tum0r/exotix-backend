@@ -71,6 +71,7 @@ export class BannersRepository {
   async create(data: CreateBannerDto, userId: string) {
     try {
       const { bannerImage, ...bannerData } = data;
+
       const banner = await this.prismaService.banner.create({
         data: {
           ...bannerData,

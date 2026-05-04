@@ -86,6 +86,8 @@ export class UploadRepo {
             case ImageOwnerType.CATEGORY_BANNER:
             case ImageOwnerType.CATEGORY_IMAGE:
                 return "categoryId";
+            case ImageOwnerType.BANNER:
+                return "bannerId";
             default:
                 throw new Error("Invalid owner type");
         }

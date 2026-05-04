@@ -7,7 +7,6 @@ import {
 import { BannersRepository } from './banners.repository';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
-import { IPagination } from 'src/common/interfaces/app.interface';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { ImageOwnerType, Prisma, User, UserRole } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';

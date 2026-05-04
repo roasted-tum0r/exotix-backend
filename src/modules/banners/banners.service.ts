@@ -8,12 +8,16 @@ import { BannersRepository } from './banners.repository';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 import { IPagination } from 'src/common/interfaces/app.interface';
-import { Prisma, User, UserRole } from '@prisma/client';
+import { ImageOwnerType, Prisma, User, UserRole } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { UploadRepo } from '../image-upload/upload.repo';
 
 @Injectable()
 export class BannersService {
-  constructor(private readonly repository: BannersRepository) {}
+  constructor(
+    private readonly repository: BannersRepository,
+    private readonly uploadRepo: UploadRepo,
+  ) {}
 
   async create(createBannerDto: CreateBannerDto, userId: string) {
     try {
@@ -163,6 +167,7 @@ export class BannersService {
 
   async hardDelete(id: string) {
     try {
+      await this.uploadRepo.purgeImagesByRef(id, [ImageOwnerType.BANNER]);
       const result = await this.repository.hardDelete(id);
       return {
         statusCode: HttpStatus.OK,

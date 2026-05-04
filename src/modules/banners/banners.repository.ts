@@ -74,7 +74,6 @@ export class BannersRepository {
       const banner = await this.prismaService.banner.create({
         data: {
           ...bannerData,
-          imageUrl: bannerImage?.url,
           createdBy: userId,
           updatedBy: userId,
         },
@@ -156,7 +155,6 @@ export class BannersRepository {
         where: { id },
         data: {
           ...bannerData,
-          ...(bannerImage && { imageUrl: bannerImage.url }),
           updatedBy: userId,
         },
         select: this.bannerSelectFields(user),

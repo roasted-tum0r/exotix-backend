@@ -7,7 +7,7 @@ import { User, UserRole } from '@prisma/client';
 
 @Injectable()
 export class AppDataRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(data: CreateAppDataDto) {
     try {
@@ -49,14 +49,25 @@ export class AppDataRepository {
       const data = await this.prisma.appData.findFirst();
       if (!data) return null;
 
-      // If Public (no user or not admin), return limited data
-      if (!user || user.role !== UserRole.ADMIN) {
-        const { id, metadata, createdAt, updatedAt, ...publicData } = data;
-        return publicData;
+      // Admin → full access
+      if (user?.role === UserRole.ADMIN) {
+        return data;
       }
 
-      // If Admin, return full data
-      return data;
+      // Base public data (for everyone)
+      const { id, metadata, createdAt, updatedAt, ...publicData } = data;
+
+      // Employee → public + metadata
+      if (user?.role === UserRole.EMPLOYEE) {
+        return {
+          ...publicData,
+          metadata,
+        };
+      }
+
+      // Normal user / guest → only public
+      return publicData;
+
     } catch (error) {
       AppLogger.error('AppDataRepo: Failed to find', error.stack);
       throw error;

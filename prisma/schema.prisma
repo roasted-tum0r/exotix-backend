@@ -628,3 +628,17 @@ model Banner {
   @@index([createdBy])
   @@index([updatedBy])
 }
+
+model AppData {
+  id            String   @id @default(uuid())
+  appName       String   @default("Exotix")
+  appVersion    String   @default("1.0.0")
+  domainUrl     String?
+  contactEmail  String?
+  contactPhone  String?
+  metadata      Json?    @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("app_data")
+}

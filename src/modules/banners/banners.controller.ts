@@ -177,7 +177,7 @@ export class BannersController {
     }
   }
 
-  @Patch(':id/toggle-ongoing')
+  @Patch('toggle-ongoing/:id')
   @Roles('admin', 'employee')
   async toggleOngoing(
     @Param('id') id: string,

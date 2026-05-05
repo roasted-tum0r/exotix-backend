@@ -28,23 +28,13 @@ export class OrdersService {
     }
   }
 
-  async listOrders(searchDto: OrderSearchDto) {
+  async listOrders(searchDto: OrderSearchDto, user: User) {
     try {
-      return await this.ordersRepository.findAllOrders(searchDto);
+      return await this.ordersRepository.findAllOrders(searchDto, user);
     } catch (error) {
-      AppLogger.error('Failed to list orders for admin', error.stack);
+      AppLogger.error('Failed to list orders', error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Failed to fetch orders');
-    }
-  }
-
-  async getUserOrders(user: User, pagination: OrderSearchDto) {
-    try {
-      return await this.ordersRepository.findUserOrders(user.id, pagination);
-    } catch (error) {
-      AppLogger.error(`Failed to fetch orders for user ${user.id}`, error.stack);
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Failed to fetch your orders');
     }
   }
 

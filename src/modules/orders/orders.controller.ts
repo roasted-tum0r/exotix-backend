@@ -38,31 +38,15 @@ export class OrdersController {
   }
 
   @Post('/list')
-  @Roles('admin', 'employee', 'manager')
-  @UseGuards(RolesGuard)
-  async listOrders(@Body() searchDto: OrderSearchDto) {
+  async listOrders(@CurrentUser() user: User, @Body() searchDto: OrderSearchDto) {
     try {
-      return await this.ordersService.listOrders(searchDto);
+      return await this.ordersService.listOrders(searchDto, user);
     } catch (error: any) {
       AppLogger.error(`Failed to fetch orders`, error.stack);
       if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to fetch orders',
-      });
-    }
-  }
-
-  @Get('/my-orders')
-  async getMyOrders(@CurrentUser() user: User, @Query() pagination: OrderSearchDto) {
-    try {
-      return await this.ordersService.getUserOrders(user, pagination);
-    } catch (error: any) {
-      AppLogger.error(`Failed to fetch user orders`, error.stack);
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Failed to fetch your orders',
       });
     }
   }

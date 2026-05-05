@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
 
 @Injectable()
@@ -135,7 +135,7 @@ export class OrdersRepository {
     });
   }
 
-  async findAllOrders(searchDto: OrderSearchDto) {
+  async findAllOrders(searchDto: OrderSearchDto, user: User) {
     try {
       const {
         searchText,
@@ -153,7 +153,17 @@ export class OrdersRepository {
       } = searchDto;
       const skip = (page - 1) * limit;
 
+      const isStaff =
+        user.role === 'ADMIN' ||
+        user.role === 'EMPLOYEE' ||
+        user.role === 'MANAGER';
+
       const where: any = {};
+
+      // 🔒 Security: Customers can ONLY see their own orders
+      if (!isStaff) {
+        where.userId = user.id;
+      }
 
       if (status) {
         where.status = status;
@@ -180,13 +190,21 @@ export class OrdersRepository {
       }
 
       if (searchText) {
-        where.OR = [
+        const searchConditions: any[] = [
           { orderNumber: { contains: searchText } },
-          { user: { firstname: { contains: searchText } } },
-          { user: { lastname: { contains: searchText } } },
-          { user: { email: { contains: searchText } } },
-          { user: { phone: { contains: searchText } } },
         ];
+
+        // Only staff can search by user metadata across all orders
+        if (isStaff) {
+          searchConditions.push(
+            { user: { firstname: { contains: searchText } } },
+            { user: { lastname: { contains: searchText } } },
+            { user: { email: { contains: searchText } } },
+            { user: { phone: { contains: searchText } } },
+          );
+        }
+
+        where.OR = searchConditions;
       }
 
       const [orders, total] = await Promise.all([
@@ -196,16 +214,19 @@ export class OrdersRepository {
           take: limit,
           orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
           include: {
-            items: true,
-            payments: true,
-            user: {
-              select: {
-                firstname: true,
-                lastname: true,
-                email: true,
-                phone: true,
-              },
-            },
+            _count: { select: { items: true } },
+            items: isStaff, // Only include full items list for staff in the bulk list
+            payments: isStaff,
+            user: isStaff
+              ? {
+                  select: {
+                    firstname: true,
+                    lastname: true,
+                    email: true,
+                    phone: true,
+                  },
+                }
+              : false,
           },
         }),
         this.prisma.order.count({ where }),
@@ -224,44 +245,6 @@ export class OrdersRepository {
     }
   }
 
-  async findUserOrders(userId: string, pagination: OrderSearchDto) {
-    try {
-      const { page, limit, sortBy, isAsc } = pagination;
-      const skip = (page - 1) * limit;
-
-      const [orders, total] = await Promise.all([
-        this.prisma.order.findMany({
-          where: { userId },
-          skip,
-          take: limit,
-          orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
-          select: {
-            id: true,
-            orderNumber: true,
-            totalAmount: true,
-            status: true,
-            paymentStatus: true,
-            createdAt: true,
-            _count: {
-              select: { items: true },
-            },
-          },
-        }),
-        this.prisma.order.count({ where: { userId } }),
-      ]);
-
-      return {
-        orders,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      };
-    } catch (error) {
-      AppLogger.error(`Repository findUserOrders failed for user ${userId}`, error.stack);
-      throw error;
-    }
-  }
 
   async confirmPayment(orderId: string, transactionId?: string) {
     return await this.prisma.$transaction(async (tx) => {

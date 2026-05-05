@@ -25,6 +25,7 @@ enum OrderStatus {
 }
 
 enum PaymentStatus {
+  PENDING
   UNPAID
   PAID
   PARTIALLY_PAID
@@ -355,7 +356,7 @@ model Payment {
   transactionId    String?  @unique           // External reference ID
   paymentMethod    String?                    // CARD, UPI, CASH
   
-  status           String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  status           PaymentStatus @default(PENDING)
   
   // Flexible Audit Data for reports
   paymentMetadata  Json?    @default("{}")

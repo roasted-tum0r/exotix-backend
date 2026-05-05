@@ -27,6 +27,7 @@ import { UploadModule } from './modules/image-upload/upload.module';
 import { OptionalAuthGuard } from './auth/optionalguards/optional-auth.guard';
 import { BannersModule } from './modules/banners/banners.module';
 import { AppDataModule } from './modules/app-data/app-data.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { AppDataModule } from './modules/app-data/app-data.module';
     UploadModule,
     BannersModule,
     AppDataModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

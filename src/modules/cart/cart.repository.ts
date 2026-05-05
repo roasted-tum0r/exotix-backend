@@ -125,11 +125,12 @@ export class CartRepository {
             : { userId_itemId: { userId: userId, itemId } },
           update: {
             quantity: { increment: 1 },
+            cartId: cart.id, // Move item to current active cart if it exists in an old one
           },
           create: {
             quantity: 1,
             [isGuestCart ? 'guestId' : 'userId']: userId,
-            cartId: cart.id, // ✅ now works fine
+            cartId: cart.id,
             itemId,
           },
         });
@@ -154,36 +155,42 @@ export class CartRepository {
               isActive: true,
             },
           },
-          update: {
-            userId,
-          },
+          update: {}, // No changes needed to existing active cart
           create: {
             name: `New cart for ${firstName}`,
             userId,
           },
           select: { id: true },
         });
-        const cartItem = await tx.$executeRawUnsafe(`
-        INSERT INTO CartItem (id, cartId, userId, itemId, quantity)
-        SELECT UUID(), '${cart.id}', '${userId}', g.itemId, g.quantity
-        FROM CartItem g
-        WHERE g.guestId = '${guestUserId}'
-        ON DUPLICATE KEY UPDATE CartItem.quantity = CartItem.quantity + VALUES(quantity);
-        `);
+
+        // Use parameterized $executeRaw to prevent SQL injection
+        // ON DUPLICATE KEY UPDATE handles summing quantities and moving items to the active cart
+        const cartItem = await tx.$executeRaw`
+          INSERT INTO CartItem (id, cartId, userId, itemId, quantity)
+          SELECT UUID(), ${cart.id}, ${userId}, g.itemId, g.quantity
+          FROM CartItem g
+          WHERE g.guestId = ${guestUserId}
+          ON DUPLICATE KEY UPDATE 
+            quantity = CartItem.quantity + VALUES(quantity),
+            cartId = VALUES(cartId);
+        `;
+
+        // Purge guest cart items and the guest cart itself
         await tx.cartItem.deleteMany({
           where: { guestId: guestUserId },
         });
         await tx.cart.deleteMany({
           where: { guestId: guestUserId },
         });
+
         return { cart, cartItem };
       });
-    } catch (error) {
-      AppLogger.error(error);
+    } catch (error: any) {
+      AppLogger.error(`Failed to merge cart for user ${userId}: ${error.message}`, error.stack);
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         error: true,
-        message: `Something went wrong.`,
+        message: `Failed to merge carts.`,
       });
     }
   }

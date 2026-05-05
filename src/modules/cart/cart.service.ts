@@ -165,17 +165,25 @@ export class CartService {
 
   async mergeCartupdate(guestUserId: string, user: User) {
     try {
+      const mergeData = await this.cartRepository.mergeCart(
+        user.id,
+        guestUserId,
+        user.firstname,
+      );
       return {
         statusCode: HttpStatus.OK,
         error: false,
-        message: 'Carts merged',
-        data: await this.cartRepository.mergeCart(
-          user.id,
-          guestUserId,
-          user.firstname,
-        ),
+        message: 'Carts merged successfully',
+        data: mergeData,
       };
-    } catch (error) {}
+    } catch (error: any) {
+      AppLogger.error(`Failed to merge cart for user ${user.id}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to merge carts',
+      });
+    }
   }
 
   async remove(id: string, itemIds: string[] = []) {

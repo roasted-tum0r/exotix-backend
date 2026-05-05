@@ -53,6 +53,20 @@ export class OrdersController {
     }
   }
 
+  @Get('/my-orders')
+  async getMyOrders(@CurrentUser() user: User, @Query() pagination: OrderSearchDto) {
+    try {
+      return await this.ordersService.getUserOrders(user, pagination);
+    } catch (error: any) {
+      AppLogger.error(`Failed to fetch user orders`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch your orders',
+      });
+    }
+  }
+
   @Get('/:id')
   async getOrder(@CurrentUser() user: User, @Param('id') id: string) {
     try {

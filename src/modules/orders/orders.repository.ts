@@ -136,87 +136,131 @@ export class OrdersRepository {
   }
 
   async findAllOrders(searchDto: OrderSearchDto) {
-    const {
-      searchText,
-      page,
-      limit,
-      status,
-      paymentStatus,
-      branchId,
-      minAmount,
-      maxAmount,
-      startDate,
-      endDate,
-      sortBy,
-      isAsc,
-    } = searchDto;
-    const skip = (page - 1) * limit;
+    try {
+      const {
+        searchText,
+        page,
+        limit,
+        status,
+        paymentStatus,
+        branchId,
+        minAmount,
+        maxAmount,
+        startDate,
+        endDate,
+        sortBy,
+        isAsc,
+      } = searchDto;
+      const skip = (page - 1) * limit;
 
-    const where: any = {};
+      const where: any = {};
 
-    if (status) {
-      where.status = status;
-    }
+      if (status) {
+        where.status = status;
+      }
 
-    if (paymentStatus) {
-      where.paymentStatus = paymentStatus;
-    }
+      if (paymentStatus) {
+        where.paymentStatus = paymentStatus;
+      }
 
-    if (branchId) {
-      where.branchId = branchId;
-    }
+      if (branchId) {
+        where.branchId = branchId;
+      }
 
-    if (minAmount !== undefined || maxAmount !== undefined) {
-      where.totalAmount = {};
-      if (minAmount !== undefined) where.totalAmount.gte = minAmount;
-      if (maxAmount !== undefined) where.totalAmount.lte = maxAmount;
-    }
+      if (minAmount !== undefined || maxAmount !== undefined) {
+        where.totalAmount = {};
+        if (minAmount !== undefined) where.totalAmount.gte = minAmount;
+        if (maxAmount !== undefined) where.totalAmount.lte = maxAmount;
+      }
 
-    if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) where.createdAt.gte = new Date(startDate);
-      if (endDate) where.createdAt.lte = new Date(endDate);
-    }
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate);
+        if (endDate) where.createdAt.lte = new Date(endDate);
+      }
 
-    if (searchText) {
-      where.OR = [
-        { orderNumber: { contains: searchText } },
-        { user: { firstname: { contains: searchText } } },
-        { user: { lastname: { contains: searchText } } },
-        { user: { email: { contains: searchText } } },
-        { user: { phone: { contains: searchText } } },
-      ];
-    }
+      if (searchText) {
+        where.OR = [
+          { orderNumber: { contains: searchText } },
+          { user: { firstname: { contains: searchText } } },
+          { user: { lastname: { contains: searchText } } },
+          { user: { email: { contains: searchText } } },
+          { user: { phone: { contains: searchText } } },
+        ];
+      }
 
-    const [orders, total] = await Promise.all([
-      this.prisma.order.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
-        include: {
-          items: true,
-          payments: true,
-          user: {
-            select: {
-              firstname: true,
-              lastname: true,
-              email: true,
-              phone: true,
+      const [orders, total] = await Promise.all([
+        this.prisma.order.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
+          include: {
+            items: true,
+            payments: true,
+            user: {
+              select: {
+                firstname: true,
+                lastname: true,
+                email: true,
+                phone: true,
+              },
             },
           },
-        },
-      }),
-      this.prisma.order.count({ where }),
-    ]);
+        }),
+        this.prisma.order.count({ where }),
+      ]);
 
-    return {
-      orders,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+      return {
+        orders,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      AppLogger.error('Repository findAllOrders failed', error.stack);
+      throw error;
+    }
+  }
+
+  async findUserOrders(userId: string, pagination: OrderSearchDto) {
+    try {
+      const { page, limit, sortBy, isAsc } = pagination;
+      const skip = (page - 1) * limit;
+
+      const [orders, total] = await Promise.all([
+        this.prisma.order.findMany({
+          where: { userId },
+          skip,
+          take: limit,
+          orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
+          select: {
+            id: true,
+            orderNumber: true,
+            totalAmount: true,
+            status: true,
+            paymentStatus: true,
+            createdAt: true,
+            _count: {
+              select: { items: true },
+            },
+          },
+        }),
+        this.prisma.order.count({ where: { userId } }),
+      ]);
+
+      return {
+        orders,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      AppLogger.error(`Repository findUserOrders failed for user ${userId}`, error.stack);
+      throw error;
+    }
   }
 
   async confirmPayment(orderId: string, transactionId?: string) {

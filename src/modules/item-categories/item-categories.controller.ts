@@ -25,8 +25,10 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { IPagination } from 'src/common/interfaces/app.interface';
 import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('item-categories')
+@UseGuards(RolesGuard)
 export class ItemCategoriesController {
 
   constructor(private readonly itemCategoriesService: ItemCategoriesService) { }

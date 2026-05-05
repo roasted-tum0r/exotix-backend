@@ -10,6 +10,7 @@ import {
   HttpException,
   Res,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -26,6 +27,7 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { Roles } from 'src/common/decorators/user-role.decorator';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 // @UseInterceptors(EncryptIdInterceptor)
 @Controller('auth')
@@ -188,6 +190,7 @@ export class AuthController {
     }
   }
   @Roles('ADMIN', 'SUPER_ADMIN')
+  @UseGuards(RolesGuard)
   @Get('/user-details/:id')
   async findUser(
     @Param('id') id: string,

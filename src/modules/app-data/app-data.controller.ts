@@ -14,8 +14,10 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
 import { User, UserRole } from '@prisma/client';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('app-data')
+@UseGuards(RolesGuard)
 export class AppDataController {
   constructor(private readonly appDataService: AppDataService) {}
 

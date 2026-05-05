@@ -10,6 +10,7 @@ import {
   ValidationPipe,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { OffersService } from './offers.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
@@ -20,9 +21,11 @@ import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { FindOfferDto } from './dto/find-offer.dto';
 import { Roles } from 'src/common/decorators/user-role.decorator';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('offers')
 @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+@UseGuards(RolesGuard)
 export class OffersController {
   constructor(private readonly offersService: OffersService) {}
   @Roles('admin')

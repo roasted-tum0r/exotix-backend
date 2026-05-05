@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderSearchDto } from './dto/order-search.dto';
 
 @Injectable()
 export class OrdersRepository {
@@ -112,41 +113,137 @@ export class OrdersRepository {
     }
   }
 
-  async getOrderById(orderId: string, userId: string) {
+  async getOrderById(orderId: string, userId?: string) {
+    const where: any = { id: orderId };
+    if (userId) {
+      where.userId = userId;
+    }
     return await this.prisma.order.findFirst({
-      where: { id: orderId, userId },
+      where,
       include: {
         items: true,
         payments: true,
+        user: {
+          select: {
+            firstname: true,
+            lastname: true,
+            email: true,
+            phone: true,
+          },
+        },
       },
     });
   }
 
-  async confirmPayment(orderId: string, userId: string, transactionId?: string) {
+  async findAllOrders(searchDto: OrderSearchDto) {
+    const {
+      searchText,
+      page,
+      limit,
+      status,
+      paymentStatus,
+      branchId,
+      minAmount,
+      maxAmount,
+      startDate,
+      endDate,
+      sortBy,
+      isAsc,
+    } = searchDto;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (paymentStatus) {
+      where.paymentStatus = paymentStatus;
+    }
+
+    if (branchId) {
+      where.branchId = branchId;
+    }
+
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      where.totalAmount = {};
+      if (minAmount !== undefined) where.totalAmount.gte = minAmount;
+      if (maxAmount !== undefined) where.totalAmount.lte = maxAmount;
+    }
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    if (searchText) {
+      where.OR = [
+        { orderNumber: { contains: searchText } },
+        { user: { firstname: { contains: searchText } } },
+        { user: { lastname: { contains: searchText } } },
+        { user: { email: { contains: searchText } } },
+        { user: { phone: { contains: searchText } } },
+      ];
+    }
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
+        include: {
+          items: true,
+          payments: true,
+          user: {
+            select: {
+              firstname: true,
+              lastname: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      orders,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async confirmPayment(orderId: string, transactionId?: string) {
     return await this.prisma.$transaction(async (tx) => {
-       const order = await tx.order.findFirst({
-         where: { id: orderId, userId }
-       });
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+      });
 
-       if(!order) throw new BadRequestException('Order not found');
+      if (!order) throw new BadRequestException('Order not found');
 
-       await tx.order.update({
-         where: { id: orderId },
-         data: {
-           paymentStatus: PaymentStatus.PAID,
-           status: OrderStatus.CONFIRMED
-         }
-       });
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: PaymentStatus.PAID,
+          status: OrderStatus.CONFIRMED,
+        },
+      });
 
-       await tx.payment.updateMany({
-         where: { orderId },
-         data: {
-           status: PaymentStatus.PAID,
-           transactionId: transactionId || `MANUAL-${Date.now()}`
-         }
-       });
+      await tx.payment.updateMany({
+        where: { orderId },
+        data: {
+          status: PaymentStatus.PAID,
+          transactionId: transactionId || `MANUAL-${Date.now()}`,
+        },
+      });
 
-       return { message: 'Order confirmed successfully' };
+      return { message: 'Order confirmed successfully' };
     });
   }
 }

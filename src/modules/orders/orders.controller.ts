@@ -7,12 +7,17 @@ import {
   HttpStatus,
   InternalServerErrorException,
   HttpException,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { OrderSearchDto } from './dto/order-search.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { Roles } from 'src/common/decorators/user-role.decorator';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
@@ -32,6 +37,22 @@ export class OrdersController {
     }
   }
 
+  @Post('/list')
+  @Roles('admin', 'employee', 'manager')
+  @UseGuards(RolesGuard)
+  async listOrders(@Body() searchDto: OrderSearchDto) {
+    try {
+      return await this.ordersService.listOrders(searchDto);
+    } catch (error: any) {
+      AppLogger.error(`Failed to fetch orders`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Failed to fetch orders',
+      });
+    }
+  }
+
   @Get('/:id')
   async getOrder(@CurrentUser() user: User, @Param('id') id: string) {
     try {
@@ -46,14 +67,15 @@ export class OrdersController {
     }
   }
 
-  @Post('/:id/confirm')
+  @Post('/confirm/:id')
+  @Roles('admin', 'employee', 'manager')
+  @UseGuards(RolesGuard)
   async confirmOrder(
-    @CurrentUser() user: User,
     @Param('id') id: string,
     @Body('transactionId') transactionId?: string,
   ) {
     try {
-      return await this.ordersService.confirmOrderManually(id, user, transactionId);
+      return await this.ordersService.confirmOrderManually(id, transactionId);
     } catch (error: any) {
       AppLogger.error(`Order confirmation failed`, error.stack);
       if (error instanceof HttpException) throw error;

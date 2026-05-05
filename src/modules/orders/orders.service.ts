@@ -11,15 +11,26 @@ export class OrdersService {
     return await this.ordersRepository.createOrderFromCart(user.id, createOrderDto);
   }
 
+  async listOrders(searchDto: any) {
+    return await this.ordersRepository.findAllOrders(searchDto);
+  }
+
   async getOrderDetails(orderId: string, user: User) {
-    const order = await this.ordersRepository.getOrderById(orderId, user.id);
+    const isAdminOrEmployee =
+      user.role === 'ADMIN' ||
+      user.role === 'EMPLOYEE' ||
+      user.role === 'MANAGER';
+    const order = await this.ordersRepository.getOrderById(
+      orderId,
+      isAdminOrEmployee ? undefined : user.id,
+    );
     if (!order) {
       throw new NotFoundException('Order not found');
     }
     return order;
   }
 
-  async confirmOrderManually(orderId: string, user: User, transactionId?: string) {
-    return await this.ordersRepository.confirmPayment(orderId, user.id, transactionId);
+  async confirmOrderManually(orderId: string, transactionId?: string) {
+    return await this.ordersRepository.confirmPayment(orderId, transactionId);
   }
 }

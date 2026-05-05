@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Logger, UseGuards } from '@nestjs/common';
 import { NewsletterSubsService } from './newsletter-subs.service';
 import {
   CreateNewsletterSubscriberDto,
@@ -7,8 +7,10 @@ import {
 } from './dto/create-newsletter-sub.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { Roles } from 'src/common/decorators/user-role.decorator';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('newsletter-subs')
+@UseGuards(RolesGuard)
 export class NewsletterSubsController {
   private readonly logger = new Logger(NewsletterSubsController.name);
 

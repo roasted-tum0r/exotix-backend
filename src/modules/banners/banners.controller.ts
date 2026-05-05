@@ -24,8 +24,10 @@ import { Public } from 'src/common/decorators/public.decorator';
 import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
 import { ISearchObject } from 'src/common/interfaces/category.interface';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('banners')
+@UseGuards(RolesGuard)
 export class BannersController {
   constructor(private readonly bannersService: BannersService) {}
 

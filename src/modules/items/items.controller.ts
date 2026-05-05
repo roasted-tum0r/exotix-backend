@@ -22,8 +22,10 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { Roles } from 'src/common/decorators/user-role.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { OptionalAuthGuard } from 'src/auth/optionalguards/optional-auth.guard';
+import { RolesGuard } from 'src/auth/guards/role-auth.guard';
 
 @Controller('items')
+@UseGuards(RolesGuard)
 export class ItemsController {
   constructor(private readonly service: ItemsService) {}
   @Roles('admin', 'employee')

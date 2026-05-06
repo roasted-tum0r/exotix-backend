@@ -15,6 +15,12 @@ const RECOMMENDATION_SELECT = {
   isAvailable: true,
   offer: true,
   category: { select: { id: true, name: true } },
+  images: {
+    select: { ownerType: true, imageUrl: true, publicId: true },
+    where: {
+      ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL] },
+    },
+  },
 };
 
 @Injectable()
@@ -444,7 +450,10 @@ export class ItemsRepository {
         }),
         this.prisma.item.count({ where }),
       ]);
-      return { results, total };
+      return {
+        results: results.map((item) => this.transformItemImages(item)),
+        total,
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -482,7 +491,10 @@ export class ItemsRepository {
         }),
         this.prisma.item.count({ where }),
       ]);
-      return { results, total };
+      return {
+        results: results.map((item) => this.transformItemImages(item)),
+        total,
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -546,7 +558,10 @@ export class ItemsRepository {
 
       // Restore co-purchase rank order
       const results = itemIds
-        .map((id) => items.find((i) => i.id === id))
+        .map((id) => {
+          const item = items.find((i) => i.id === id);
+          return item ? this.transformItemImages(item) : null;
+        })
         .filter(Boolean);
 
       return { results, total };

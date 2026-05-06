@@ -511,8 +511,8 @@ export class ItemsRepository {
         this.prisma.$queryRaw<{ itemId: string; score: bigint }[]>(
           Prisma.sql`
             SELECT oi2.itemId, COUNT(*) AS score
-            FROM OrderItem oi1
-            JOIN OrderItem oi2
+            FROM order_items oi1
+            JOIN order_items oi2
               ON oi1.orderId = oi2.orderId
               AND oi2.itemId != oi1.itemId
             WHERE oi1.itemId = ${itemId}
@@ -524,8 +524,8 @@ export class ItemsRepository {
         this.prisma.$queryRaw<{ total: bigint }[]>(
           Prisma.sql`
             SELECT COUNT(DISTINCT oi2.itemId) AS total
-            FROM OrderItem oi1
-            JOIN OrderItem oi2
+            FROM order_items oi1
+            JOIN order_items oi2
               ON oi1.orderId = oi2.orderId
               AND oi2.itemId != oi1.itemId
             WHERE oi1.itemId = ${itemId}

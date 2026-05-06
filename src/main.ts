@@ -26,5 +26,6 @@ async function bootstrap() {
   // app.useGlobalInterceptors(app.get(EncryptIdInterceptor));
   app.useGlobalInterceptors(app.get(DateToISOStringInterceptor));
   await app.listen(process.env.PORT ?? 3000);
+  console.log(`Application is running on: http://localhost:${process.env.PORT || 3000}`);
 }
 bootstrap();

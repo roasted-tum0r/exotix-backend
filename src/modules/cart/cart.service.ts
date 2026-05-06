@@ -100,14 +100,21 @@ export class CartService {
     try {
       if (getCart.userId) {
         // If userId is present, we can fetch the cart
+        const cart: any = await this.cartRepository.getCartByUserID(
+          getCart.userId,
+          isGuestCart,
+        );
+        if (cart && cart.items) {
+          cart.items = cart.items.map((cartItem: any) => ({
+            ...cartItem,
+            item: this.itemRepository.transformItemImages(cartItem.item),
+          }));
+        }
         return {
           statusCode: HttpStatus.OK,
           error: false,
           message: 'Cart fetched',
-          data: await this.cartRepository.getCartByUserID(
-            getCart.userId,
-            isGuestCart,
-          ),
+          data: cart,
         };
       } else {
         return {

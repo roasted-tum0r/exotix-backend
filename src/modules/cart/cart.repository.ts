@@ -23,7 +23,12 @@ export class CartRepository {
                   id: true,
                   name: true,
                   price: true,
-                  images: true,
+                  images: {
+                    select: { ownerType: true, imageUrl: true, publicId: true },
+                    where: {
+                      ownerType: { in: ['ITEM_THUMBNAIL', 'ITEM_GALLERY'] },
+                    },
+                  },
                   inventories: true,
                   description: true,
                   isActive: true,

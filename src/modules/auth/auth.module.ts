@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UserRepository } from './auth.repository';
 import { UploadRepo } from '../image-upload/upload.repo';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
+import { CartRepository } from '../cart/cart.repository';
 
 @Module({
 imports: [
@@ -15,7 +16,7 @@ imports: [
   }),
 ],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService, UserRepository, UploadRepo, CloudinaryService],
+  providers: [AuthService, PrismaService, UserRepository, UploadRepo, CloudinaryService, CartRepository],
   exports: [UserRepository, JwtModule],
 })
 export class AuthModule {}

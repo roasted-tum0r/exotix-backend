@@ -27,6 +27,7 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { UploadRepo } from '../image-upload/upload.repo';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 import { ImageOwnerType } from '@prisma/client';
+import { CartRepository } from '../cart/cart.repository';
 
 @Injectable()
 export class AuthService {
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly uploadRepo: UploadRepo,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly cartRepository: CartRepository,
   ) {}
   async postNewUser(body: CreateAuthUserDto) {
     try {
@@ -277,6 +279,16 @@ export class AuthService {
         //   maxAge: REFRESH_TTL * 1000,
         //   path: '/exotix-api/auth/refresh-token',
         // });
+
+        // ── Auto-merge guest cart if guestUserId is provided ───────────────
+        if (body.guestUserId) {
+          try {
+            await this.cartRepository.mergeCart(user.id, body.guestUserId, user.firstname);
+            AppLogger.log(`Cart merged automatically for user: ${user.id}`);
+          } catch (mergeError) {
+            AppLogger.error(`Auto-merge failed during login for user ${user.id}`, mergeError.stack);
+          }
+        }
 
         // Fetch user images to include in login response
         const userImages = await this.uploadRepo.getImagesById(user.id, ImageOwnerType.USER);

@@ -141,6 +141,28 @@ export class ItemsRepository {
     } as any;
   }
   // ─────────────────────────────────────────────────────────────────────────────
+  /**
+   * Splits the flat `images[]` returned by Prisma for categories into:
+   *   - `thumbnail`: the single CATEGORY_IMAGE entry (or null)
+   *   - `banner`:    the single CATEGORY_BANNER entry (or null)
+   */
+  transformCategoryImages<T extends { images?: { ownerType: string; imageUrl: string; publicId: string }[] } | null>(
+    category: T,
+  ): T extends null
+    ? null
+    : Omit<NonNullable<T>, 'images'> & {
+      thumbnail: { ownerType: string; imageUrl: string; publicId: string } | null;
+      banner: { ownerType: string; imageUrl: string; publicId: string } | null;
+    } {
+    if (!category) return null as any;
+    const { images = [], ...rest } = category as NonNullable<T> & { images?: { ownerType: string; imageUrl: string; publicId: string }[] };
+    return {
+      ...rest,
+      thumbnail: images.find((img) => img.ownerType === ImageOwnerType.CATEGORY_IMAGE) ?? null,
+      banner: images.find((img) => img.ownerType === ImageOwnerType.CATEGORY_BANNER) ?? null,
+    } as any;
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
 
   async create(data: CreateItemRepoDto) {
     try {
@@ -374,6 +396,12 @@ export class ItemsRepository {
             rating: true,
             offer: true,
             category: { select: { id: true, name: true } },
+            images: {
+              select: { ownerType: true, imageUrl: true, publicId: true },
+              where: {
+                ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL] },
+              },
+            },
           },
         }),
         this.prisma.categoryMaster.findMany({
@@ -383,10 +411,24 @@ export class ItemsRepository {
           },
           orderBy: { createdAt: 'desc' },
           take: 5,
-          select: { id: true, name: true, image: true, description: true },
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            description: true,
+            images: {
+              select: { ownerType: true, imageUrl: true, publicId: true },
+              where: {
+                ownerType: { in: [ImageOwnerType.CATEGORY_IMAGE] },
+              },
+            },
+          },
         }),
       ]);
-      return { items, categories };
+      return {
+        items: items.map((i) => this.transformItemImages(i)),
+        categories: categories.map((c) => this.transformCategoryImages(c)),
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -399,7 +441,7 @@ export class ItemsRepository {
 
   async getLatestItems() {
     try {
-      return this.prisma.item.findMany({
+      const items = await this.prisma.item.findMany({
         where: { isActive: true, isAvailable: true },
         orderBy: { createdAt: 'desc' },
         take: 3,
@@ -411,8 +453,15 @@ export class ItemsRepository {
           rating: true,
           offer: true,
           category: { select: { id: true, name: true } },
+          images: {
+            select: { ownerType: true, imageUrl: true, publicId: true },
+            where: {
+              ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL] },
+            },
+          },
         },
       });
+      return items.map((i) => this.transformItemImages(i));
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({

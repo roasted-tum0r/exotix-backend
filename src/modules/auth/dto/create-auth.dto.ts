@@ -65,6 +65,10 @@ export class LoginOtpVerifyDto extends LoginWithOtpDto {
   @IsNotEmpty()
   @IsString()
   hash_key: string;
+
+  @IsOptional()
+  @IsString()
+  guestUserId?: string;
 }
 
 /** Sent to request a password-change OTP (requires auth) */

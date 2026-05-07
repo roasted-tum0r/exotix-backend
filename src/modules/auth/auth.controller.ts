@@ -177,7 +177,7 @@ export class AuthController {
     @CurrentUser() user: User,
   ) {
     try {
-      return await this.authUserService.findOne(user.id);
+      return await this.authUserService.findOne(user.id, user.role, true);
     } catch (error) {
       AppLogger.error('Error in findUser:', error);
       if (error instanceof HttpException) throw error;
@@ -194,9 +194,10 @@ export class AuthController {
   @Get('/user-details/:id')
   async findUser(
     @Param('id') id: string,
+    @CurrentUser() currentUser: User,
   ) {
     try {
-      return await this.authUserService.findOne(id);
+      return await this.authUserService.findOne(id, currentUser.role, id === currentUser.id);
     } catch (error) {
       AppLogger.error('Error in findUser:', error);
       if (error instanceof HttpException) throw error;

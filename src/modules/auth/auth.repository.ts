@@ -1,31 +1,57 @@
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ImageOwnerType, Prisma, User } from '@prisma/client';
+import { ImageOwnerType, Prisma, User, UserRole } from '@prisma/client';
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateAuthUserDto } from './dto/create-auth.dto';
 @Injectable()
 export class UserRepository {
   constructor(private prisma: PrismaService) { }
-  async findByUserId(userId: string) {
+
+  // ─── Shared select projection ────────────────────────────────────────────────
+  userSelectFields(requestingUserRole?: UserRole, isSelf: boolean = false): Prisma.UserSelect {
+    return {
+      id: true,
+      firstname: true,
+      lastname: true,
+      phone: true,
+      email: true,
+      role: true,
+      isActive: true,
+      addresses: true,
+      orders: true,
+      createdAt: true,
+      updatedAt: true,
+      isPremium: true,
+      isVerified: true,
+      branchId: true,
+      images: {
+        select: {
+          ownerType: true,
+          id: true,
+          imageUrl: true,
+          publicId: true,
+        },
+        where: {
+          ownerType: ImageOwnerType.USER,
+        },
+      },
+      // Secret fields logic
+      ...((requestingUserRole === UserRole.ADMIN || isSelf)
+        ? {
+          employee: true,
+          cartItems: true,
+          favourites: true,
+          wishlists: true,
+        }
+        : {}),
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  async findByUserId(userId: string, requestingUserRole?: UserRole, isSelf: boolean = false) {
     try {
       return await this.prisma.user.findUnique({
         where: { id: userId, isActive: true },
-        select: {
-          id: true,
-          firstname: true,
-          lastname: true,
-          phone: true,
-          email: true,
-          role: true,
-          isActive: true,
-          addresses: true,
-          orders: true,
-          createdAt: true,
-          updatedAt: true,
-          isPremium: true,
-          isVerified: true,
-          password: true,
-          images: { select: { ownerType: true, id: true, imageUrl: true, publicId: true }, where: { ownerType: ImageOwnerType.USER } },
-        },
+        select: this.userSelectFields(requestingUserRole, isSelf),
       });
     } catch (error) {
       throw new BadRequestException({
@@ -114,19 +140,14 @@ export class UserRepository {
   async updateUserById(
     id: string,
     updateData: Partial<Prisma.UserUpdateInput>,
+    requestingUserRole?: UserRole,
+    isSelf: boolean = false,
   ) {
     try {
       return this.prisma.user.update({
         where: { id },
         data: updateData,
-        select: {
-          id: true,
-          firstname: true,
-          lastname: true,
-          phone: true,
-          email: true,
-          role: true, // include only what you want to expose
-        },
+        select: this.userSelectFields(requestingUserRole, isSelf),
       });
     } catch (error) {
       throw new BadRequestException({
@@ -153,21 +174,14 @@ export class UserRepository {
   }
   async deactivateUser(
     id: string,
-    // updateData: Partial<Prisma.UserUpdateInput>,
+    requestingUserRole?: UserRole,
+    isSelf: boolean = false,
   ) {
     try {
       return this.prisma.user.update({
         where: { id },
         data: { isActive: false },
-        select: {
-          id: true,
-          firstname: true,
-          lastname: true,
-          phone: true,
-          email: true,
-          role: true, // include only what you want to expose
-          isActive: true,
-        },
+        select: this.userSelectFields(requestingUserRole, isSelf),
       });
     } catch (error) {
       throw new BadRequestException({

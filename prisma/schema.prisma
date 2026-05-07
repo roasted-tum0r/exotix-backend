@@ -114,8 +114,13 @@ model User {
   offersUpdated OfferMaster[] @relation("OfferUpdater")
   bannersCreated Banner[] @relation("BannerCreator")
   bannersUpdated Banner[] @relation("BannerUpdater")
+
+  branchId      String?
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+
   @@unique([email, phone]) // Composite unique constraint
   @@index([isActive])
+  @@index([branchId])
 }
 
 model Address {
@@ -386,6 +391,7 @@ model Branch {
    // Relationships
   reviews     Review[]  // One-to-many
   images      Image[]   // One-to-many
+  users       User[]
 }
 
 model Inventory {

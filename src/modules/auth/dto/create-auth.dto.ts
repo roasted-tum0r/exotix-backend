@@ -40,6 +40,10 @@ export class CreateAuthUserDto {
   @ValidateNested()
   @Type(() => ImagesDto)
   image?: ImagesDto;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
 }
 export class LoginWithOtpDto {
   @IsNotEmpty()

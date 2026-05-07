@@ -16,7 +16,7 @@ import {
 } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { UserRepository } from './auth.repository';
-import { User } from '@prisma/client';
+import { User, UserRole } from '@prisma/client';
 import { RegistrationAs, LoginType } from 'src/config/enums/authuser-enums';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -303,6 +303,7 @@ export class AuthService {
             email: user.email,
             phone: user.phone,
             role: user.role,
+            branchId: user.branchId,
             createdat: user.createdAt,
             accessToken,
             images: userImages,
@@ -453,7 +454,12 @@ export class AuthService {
 
       // Strip image fields before passing to Prisma (they're not User columns)
       const { image, deletedImagePublicId, ...userFields } = createAuthUserDto;
-      const updatedUser = await this.userRepository.updateUserById(id, userFields);
+      const updatedUser = await this.userRepository.updateUserById(
+        id,
+        userFields,
+        user.role,
+        id === user.id,
+      );
 
       // Return updated images array alongside the user
       const updatedImages = await this.uploadRepo.getImagesById(id, ImageOwnerType.USER);
@@ -487,7 +493,8 @@ export class AuthService {
       }
       const deactivateUser = await this.userRepository.deactivateUser(
         id,
-        // createAuthUserDto,
+        user.role,
+        id === user.id,
       );
       return {
         statusCode: HttpStatus.OK,
@@ -650,9 +657,13 @@ export class AuthService {
     return `This action returns all auth`;
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, requestingUserRole?: UserRole, isSelf: boolean = false) {
     try {
-      const user = await this.userRepository.findByUserId(id);
+      const user = await this.userRepository.findByUserId(
+        id,
+        requestingUserRole,
+        isSelf,
+      );
       return {
         statusCode: HttpStatus.OK,
         message: 'User found successfully!',

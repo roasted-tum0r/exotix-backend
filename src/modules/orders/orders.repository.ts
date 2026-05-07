@@ -31,15 +31,32 @@ export class OrdersRepository {
           });
         }
 
-        // 2. Fetch address for snapshotting
-        const address = await tx.address.findUnique({
-          where: { id: createOrderDto.addressId },
-        });
+        // 2. Fetch or create address for snapshotting
+        let address;
+        if (createOrderDto.addressId) {
+          address = await tx.address.findUnique({
+            where: { id: createOrderDto.addressId },
+          });
 
-        if (!address || address.userId !== userId) {
+          if (!address || address.userId !== userId) {
+            throw new BadRequestException({
+              statusCode: HttpStatus.BAD_REQUEST,
+              message: 'Selected address is invalid or does not belong to this user.',
+            });
+          }
+        } else if (createOrderDto.newAddress) {
+          // Create the new address and link it to the user
+          // This allows "ordering for others" while keeping the address in the user's history
+          address = await tx.address.create({
+            data: {
+              ...createOrderDto.newAddress,
+              userId,
+            },
+          });
+        } else {
           throw new BadRequestException({
             statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Selected address is invalid or does not belong to this user.',
+            message: 'Please provide either an existing address or a new delivery address.',
           });
         }
 

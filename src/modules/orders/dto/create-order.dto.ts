@@ -1,9 +1,16 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateAddressDto } from 'src/modules/address/dto/create-address.dto';
 
 export class CreateOrderDto {
   @IsUUID()
-  @IsNotEmpty()
-  addressId: string;
+  @IsOptional()
+  addressId?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateAddressDto)
+  newAddress?: CreateAddressDto;
 
   @IsUUID()
   @IsNotEmpty()

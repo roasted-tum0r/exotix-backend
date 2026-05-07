@@ -5,15 +5,24 @@ export class CreateAddressDto {
   @IsString()
   receiverName: string;
 
+  @IsOptional()
   @IsEnum(AddressType)
-  type: AddressType;
-
-  @IsString()
-  line1: string;
+  type?: AddressType;
 
   @IsOptional()
   @IsString()
-  line2?: string;
+  houseNo?: string;
+
+  @IsOptional()
+  @IsString()
+  flatNo?: string;
+
+  @IsString()
+  streetName: string;
+
+  @IsOptional()
+  @IsString()
+  landmark?: string;
 
   @IsString()
   city: string;
@@ -25,7 +34,7 @@ export class CreateAddressDto {
   country: string;
 
   @IsString()
-  postalCode: string;
+  zipcode: string;
 
   @IsOptional()
   @IsString()

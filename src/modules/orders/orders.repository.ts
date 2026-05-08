@@ -136,14 +136,9 @@ export class OrdersRepository {
           },
         });
 
-        // 7. Clear the cart items and deactivate the cart
+        // 7. Clear the cart items (keeps the cart record alive and active)
         await tx.cartItem.deleteMany({
           where: { cartId: cart.id },
-        });
-
-        await tx.cart.update({
-          where: { id: cart.id },
-          data: { isActive: false },
         });
 
         return this.transformOrder(order);

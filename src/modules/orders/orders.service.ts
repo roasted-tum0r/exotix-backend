@@ -17,24 +17,44 @@ export class OrdersService {
 
   async checkout(user: User, createOrderDto: CreateOrderDto) {
     try {
-      return await this.ordersRepository.createOrderFromCart(
+      const payload = await this.ordersRepository.createOrderFromCart(
         user.id,
         createOrderDto,
       );
+      return {
+        statusCode: HttpStatus.CREATED,
+        error: false,
+        message: 'Order placed successfully',
+        data: payload,
+      };
     } catch (error) {
       AppLogger.error(`Checkout failed for user ${user.id}`, error.stack);
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Failed to process checkout');
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to process checkout',
+      });
     }
   }
 
   async listOrders(searchDto: OrderSearchDto, user: User) {
     try {
-      return await this.ordersRepository.findAllOrders(searchDto, user);
+      const payload = await this.ordersRepository.findAllOrders(searchDto, user);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Orders fetched successfully',
+        data: payload,
+      };
     } catch (error) {
       AppLogger.error('Failed to list orders', error.stack);
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Failed to fetch orders');
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to fetch orders',
+      });
     }
   }
 
@@ -49,23 +69,46 @@ export class OrdersService {
         isAdminOrEmployee ? undefined : user.id,
       );
       if (!order) {
-        throw new NotFoundException('Order not found');
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          error: true,
+          message: 'Order not found',
+        });
       }
-      return order;
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Order details fetched successfully',
+        data: order,
+      };
     } catch (error) {
       AppLogger.error(`Failed to fetch order details for id ${orderId}`, error.stack);
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Failed to fetch order details');
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to fetch order details',
+      });
     }
   }
 
   async confirmOrderManually(orderId: string, transactionId?: string) {
     try {
-      return await this.ordersRepository.confirmPayment(orderId, transactionId);
+      const payload = await this.ordersRepository.confirmPayment(orderId, transactionId);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Order confirmed successfully',
+        data: payload,
+      };
     } catch (error) {
       AppLogger.error(`Manual confirmation failed for order ${orderId}`, error.stack);
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Order confirmation failed');
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Order confirmation failed',
+      });
     }
   }
 }

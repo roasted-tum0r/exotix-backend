@@ -7,7 +7,7 @@ import { OrderSearchDto } from './dto/order-search.dto';
 
 @Injectable()
 export class OrdersRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async createOrderFromCart(userId: string, createOrderDto: CreateOrderDto) {
     try {
@@ -236,25 +236,23 @@ export class OrdersRepository {
             payments: isStaff,
             user: isStaff
               ? {
-                  select: {
-                    firstname: true,
-                    lastname: true,
-                    email: true,
-                    phone: true,
-                  },
-                }
+                select: {
+                  firstname: true,
+                  lastname: true,
+                  email: true,
+                  phone: true,
+                },
+              }
               : false,
           },
         }),
         this.prisma.order.count({ where }),
       ]);
-
       return {
-        orders,
         total,
-        page,
-        limit,
+        currentPage: page,
         totalPages: Math.ceil(total / limit),
+        results: orders,
       };
     } catch (error) {
       AppLogger.error('Repository findAllOrders failed', error.stack);

@@ -8,9 +8,8 @@ export class CreateOrderDto {
   addressId?: string;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => CreateAddressDto)
-  newAddress?: CreateAddressDto;
+  @IsString()
+  contactNumber?: string;
 
   @IsUUID()
   @IsNotEmpty()

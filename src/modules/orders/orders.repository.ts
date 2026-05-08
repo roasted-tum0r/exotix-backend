@@ -31,32 +31,22 @@ export class OrdersRepository {
           });
         }
 
-        // 2. Fetch or create address for snapshotting
-        let address;
-        if (createOrderDto.addressId) {
-          address = await tx.address.findUnique({
-            where: { id: createOrderDto.addressId },
-          });
-
-          if (!address || address.userId !== userId) {
-            throw new BadRequestException({
-              statusCode: HttpStatus.BAD_REQUEST,
-              message: 'Selected address is invalid or does not belong to this user.',
-            });
-          }
-        } else if (createOrderDto.newAddress) {
-          // Create the new address and link it to the user
-          // This allows "ordering for others" while keeping the address in the user's history
-          address = await tx.address.create({
-            data: {
-              ...createOrderDto.newAddress,
-              userId,
-            },
-          });
-        } else {
+        // 2. Fetch address for snapshotting
+        if (!createOrderDto.addressId) {
           throw new BadRequestException({
             statusCode: HttpStatus.BAD_REQUEST,
-            message: 'Please provide either an existing address or a new delivery address.',
+            message: 'Please provide a delivery address ID.',
+          });
+        }
+
+        const address = await tx.address.findUnique({
+          where: { id: createOrderDto.addressId },
+        });
+
+        if (!address || address.userId !== userId) {
+          throw new BadRequestException({
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: 'Selected address is invalid or does not belong to this user.',
           });
         }
 
@@ -77,9 +67,16 @@ export class OrdersRepository {
         // 4. Generate a unique human-readable order number
         const orderNumber = `EX-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-        // Resolve contact number snapshot
-        const userAccount = await tx.user.findUnique({ where: { id: userId }, select: { phone: true } });
-        const resolvedContactNumber = (address as any)?.phone || userAccount?.phone || null;
+        // Resolve contact number snapshot (DTO > Address Phone > User Account Phone)
+        const userAccount = await tx.user.findUnique({
+          where: { id: userId },
+          select: { phone: true },
+        });
+        const resolvedContactNumber =
+          createOrderDto.contactNumber ||
+          (address as any)?.phone ||
+          userAccount?.phone ||
+          null;
 
         // 5. Create the Order
         const order = await tx.order.create({

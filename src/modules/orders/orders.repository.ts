@@ -180,6 +180,16 @@ export class OrdersRepository {
           },
         },
         payments: true,
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+            state: true,
+            phone: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -293,6 +303,12 @@ export class OrdersRepository {
               },
             },
             payments: true,
+            branch: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
             user: isStaff
               ? {
                 select: {
@@ -416,6 +432,7 @@ export class OrdersRepository {
       delete order.branchId;
       delete order.couponId;
       delete order.updatedAt;
+      delete order.branch;
     }
 
     // Resolve contact number (Snapshot > Address Phone > User Account Phone)

@@ -118,7 +118,7 @@ export class OrdersRepository {
           data: { isActive: false },
         });
 
-        return order;
+        return this.transformOrder(order);
       });
     } catch (error: any) {
       AppLogger.error(`Checkout failed for user ${userId}: ${error.message}`, error.stack);
@@ -135,7 +135,7 @@ export class OrdersRepository {
     if (userId) {
       where.userId = userId;
     }
-    return await this.prisma.order.findFirst({
+    const order = await this.prisma.order.findFirst({
       where,
       include: {
         items: true,
@@ -150,6 +150,7 @@ export class OrdersRepository {
         },
       },
     });
+    return this.transformOrder(order);
   }
 
   async findAllOrders(searchDto: OrderSearchDto, user: User) {
@@ -252,7 +253,7 @@ export class OrdersRepository {
         total,
         currentPage: page,
         totalPages: Math.ceil(total / limit),
-        results: orders,
+        results: orders.map((order) => this.transformOrder(order)),
       };
     } catch (error) {
       AppLogger.error('Repository findAllOrders failed', error.stack);
@@ -287,5 +288,32 @@ export class OrdersRepository {
 
       return { message: 'Order confirmed successfully' };
     });
+  }
+
+  private transformOrder(order: any) {
+    if (!order) return order;
+
+    // Convert Decimal fields to Numbers for clean JSON serialization
+    if (order.totalAmount) {
+      order.totalAmount = Number(order.totalAmount);
+    }
+
+    if (order.items) {
+      order.items = order.items.map((item: any) => ({
+        ...item,
+        priceAtPurchase: item.priceAtPurchase
+          ? Number(item.priceAtPurchase)
+          : item.priceAtPurchase,
+      }));
+    }
+
+    if (order.payments) {
+      order.payments = order.payments.map((payment: any) => ({
+        ...payment,
+        amount: payment.amount ? Number(payment.amount) : payment.amount,
+      }));
+    }
+
+    return order;
   }
 }

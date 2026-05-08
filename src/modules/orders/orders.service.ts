@@ -67,6 +67,7 @@ export class OrdersService {
       const order = await this.ordersRepository.getOrderById(
         orderId,
         isAdminOrEmployee ? undefined : user.id,
+        isAdminOrEmployee,
       );
       if (!order) {
         throw new NotFoundException({

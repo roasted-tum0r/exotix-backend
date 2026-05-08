@@ -45,6 +45,10 @@ export class CreateAddressDto {
   longitude?: string;
 
   @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 }

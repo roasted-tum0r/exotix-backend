@@ -136,6 +136,7 @@ model Address {
   streetName   String?     // Made optional for legacy support
   landmark     String?
   zipcode      String?     // Made optional for legacy support
+  phone        String?     // New contact number for specific address
 
   // Legacy Fields (Kept as optional to prevent data loss)
   line1        String?
@@ -325,6 +326,7 @@ model Order {
   notes            String?       // Admin or User notes
   trackingNumber   String?
   courierPartner   String?
+  contactNumber    String?       // 📸 Snapshot of the phone number used for this order
 
   // Relations
   user             User          @relation(fields: [userId], references: [id])

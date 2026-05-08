@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
-import { OrderStatus, PaymentStatus, User } from '@prisma/client';
+import { ImageOwnerType, OrderStatus, PaymentStatus, User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
 
 @Injectable()
@@ -77,6 +77,10 @@ export class OrdersRepository {
         // 4. Generate a unique human-readable order number
         const orderNumber = `EX-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+        // Resolve contact number snapshot
+        const userAccount = await tx.user.findUnique({ where: { id: userId }, select: { phone: true } });
+        const resolvedContactNumber = (address as any)?.phone || userAccount?.phone || null;
+
         // 5. Create the Order
         const order = await tx.order.create({
           data: {
@@ -85,6 +89,7 @@ export class OrdersRepository {
             totalAmount,
             branchId: createOrderDto.branchId,
             shippingAddress: address as any, // Snapshotting the full address object
+            contactNumber: resolvedContactNumber,
             couponId: createOrderDto.couponId,
             notes: createOrderDto.notes,
             status: OrderStatus.PENDING,
@@ -94,7 +99,33 @@ export class OrdersRepository {
             },
           },
           include: {
-            items: true,
+            items: {
+              include: {
+                item: {
+                  include: {
+                    images: {
+                      where: {
+                        ownerType: ImageOwnerType.ITEM_THUMBNAIL,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+                phone: true,
+                images: {
+                  select: { imageUrl: true },
+                  where: { ownerType: ImageOwnerType.USER },
+                  take: 1,
+                },
+              },
+            },
           },
         });
 
@@ -130,7 +161,7 @@ export class OrdersRepository {
     }
   }
 
-  async getOrderById(orderId: string, userId?: string) {
+  async getOrderById(orderId: string, userId?: string, isStaff = false) {
     const where: any = { id: orderId };
     if (userId) {
       where.userId = userId;
@@ -138,19 +169,37 @@ export class OrdersRepository {
     const order = await this.prisma.order.findFirst({
       where,
       include: {
-        items: true,
+        items: {
+          include: {
+            item: {
+              include: {
+                images: {
+                  where: {
+                    ownerType: ImageOwnerType.ITEM_THUMBNAIL,
+                  },
+                },
+              },
+            },
+          },
+        },
         payments: true,
         user: {
           select: {
+            id: true,
             firstname: true,
             lastname: true,
             email: true,
             phone: true,
+            images: {
+              select: { imageUrl: true },
+              where: { ownerType: ImageOwnerType.USER },
+              take: 1,
+            },
           },
         },
       },
     });
-    return this.transformOrder(order);
+    return this.transformOrder(order, isStaff);
   }
 
   async findAllOrders(searchDto: OrderSearchDto, user: User) {
@@ -233,15 +282,33 @@ export class OrdersRepository {
           orderBy: { [sortBy || 'createdAt']: isAsc ? 'asc' : 'desc' },
           include: {
             _count: { select: { items: true } },
-            items: isStaff, // Only include full items list for staff in the bulk list
-            payments: isStaff,
+            items: {
+              include: {
+                item: {
+                  include: {
+                    images: {
+                      where: {
+                        ownerType: ImageOwnerType.ITEM_THUMBNAIL,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            payments: true,
             user: isStaff
               ? {
                 select: {
+                  id: true,
                   firstname: true,
                   lastname: true,
                   email: true,
                   phone: true,
+                  images: {
+                    select: { imageUrl: true },
+                    where: { ownerType: ImageOwnerType.USER },
+                    take: 1,
+                  },
                 },
               }
               : false,
@@ -290,7 +357,7 @@ export class OrdersRepository {
     });
   }
 
-  private transformOrder(order: any) {
+  private transformOrder(order: any, isStaff: boolean = false) {
     if (!order) return order;
 
     // Convert Decimal fields to Numbers for clean JSON serialization
@@ -299,19 +366,76 @@ export class OrdersRepository {
     }
 
     if (order.items) {
-      order.items = order.items.map((item: any) => ({
-        ...item,
-        priceAtPurchase: item.priceAtPurchase
-          ? Number(item.priceAtPurchase)
-          : item.priceAtPurchase,
-      }));
+      order.items = order.items.map((item: any) => {
+        const transformedItem: any = {
+          ...item,
+          priceAtPurchase: item.priceAtPurchase
+            ? Number(item.priceAtPurchase)
+            : item.priceAtPurchase,
+        };
+
+        if (item.item && item.item.images) {
+          transformedItem.thumbnail =
+            item.item.images.find(
+              (img: any) => img.ownerType === ImageOwnerType.ITEM_THUMBNAIL,
+            ) || null;
+        }
+
+        // Remove the nested item object to keep the response clean
+        delete transformedItem.item;
+
+        if (!isStaff) {
+          // Hide internal IDs for users
+          delete transformedItem.id;
+          delete transformedItem.orderId;
+        }
+
+        return transformedItem;
+      });
     }
 
     if (order.payments) {
-      order.payments = order.payments.map((payment: any) => ({
-        ...payment,
-        amount: payment.amount ? Number(payment.amount) : payment.amount,
-      }));
+      order.payments = order.payments.map((payment: any) => {
+        const transformedPayment: any = {
+          ...payment,
+          amount: payment.amount ? Number(payment.amount) : payment.amount,
+        };
+
+        if (!isStaff) {
+          // Hide sensitive payment fields for users
+          delete transformedPayment.id;
+          delete transformedPayment.orderId;
+          delete transformedPayment.paymentMetadata;
+          delete transformedPayment.updatedAt;
+        }
+
+        return transformedPayment;
+      });
+    }
+
+    if (!isStaff) {
+      // Hide sensitive order fields for users
+      delete order.userId;
+      delete order.branchId;
+      delete order.couponId;
+      delete order.updatedAt;
+    }
+
+    // Resolve contact number (Snapshot > Address Phone > User Account Phone)
+    const address = order.shippingAddress as any;
+    const userPhone = order.user?.phone;
+    order.contactNumber = order.contactNumber || address?.phone || userPhone || 'Not Provided';
+
+    // Format user info for admin/staff
+    if (isStaff && order.user) {
+      const userImages = order.user.images || [];
+      order.user = {
+        id: order.user.id,
+        name: `${order.user.firstname} ${order.user.lastname || ''}`.trim(),
+        email: order.user.email,
+        phone: order.user.phone,
+        image: userImages[0]?.imageUrl || null,
+      };
     }
 
     return order;

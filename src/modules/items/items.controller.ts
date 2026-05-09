@@ -222,13 +222,15 @@ export class ItemsController {
    * Section label: "Similar Items"
    */
   @Public('similarItems')
+  @UseGuards(OptionalAuthGuard)
   @Get('/details/:id/similar')
   async getSimilarItems(
     @Param('id') id: string,
     @Query() pagination: RecommendationPaginationDto,
+    @CurrentUser() user?: User,
   ) {
     try {
-      return await this.service.getSimilarItems(id, pagination);
+      return await this.service.getSimilarItems(id, pagination, user);
     } catch (error) {
       AppLogger.error(`Failed to fetch similar items`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -245,13 +247,15 @@ export class ItemsController {
    * Section label: "Items You May Like"
    */
   @Public('alsoLikeItems')
+  @UseGuards(OptionalAuthGuard)
   @Get('/details/:id/also-like')
   async getAlsoLikeItems(
     @Param('id') id: string,
     @Query() pagination: RecommendationPaginationDto,
+    @CurrentUser() user?: User,
   ) {
     try {
-      return await this.service.getAlsoLikeItems(id, pagination);
+      return await this.service.getAlsoLikeItems(id, pagination, user);
     } catch (error) {
       AppLogger.error(`Failed to fetch also-like items`, error.stack);
       if (error instanceof HttpException) throw error;
@@ -268,13 +272,15 @@ export class ItemsController {
    * Section label: "People Also Bought"
    */
   @Public('alsoBoughtItems')
+  @UseGuards(OptionalAuthGuard)
   @Get('/details/:id/also-bought')
   async getAlsoBoughtItems(
     @Param('id') id: string,
     @Query() pagination: RecommendationPaginationDto,
+    @CurrentUser() user?: User,
   ) {
     try {
-      return await this.service.getAlsoBoughtItems(id, pagination);
+      return await this.service.getAlsoBoughtItems(id, pagination, user);
     } catch (error) {
       AppLogger.error(`Failed to fetch also-bought items`, error.stack);
       if (error instanceof HttpException) throw error;

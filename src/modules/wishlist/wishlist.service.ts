@@ -8,6 +8,7 @@ import {
 import { WishlistRepository } from './wishlist.repository';
 import { ItemsRepository } from '../items/items.repository';
 import { AppLogger } from 'src/common/utils/app.logger';
+import { SearchWishlistDto } from './dto/wishlist.dto';
 
 @Injectable()
 export class WishlistService {
@@ -104,19 +105,16 @@ export class WishlistService {
   }
 
   /**
-   * Get the full wishlist for the authenticated user with item details.
+   * Get the full wishlist for the authenticated user with item details (paginated).
    */
-  async getWishlist(userId: string) {
+  async getWishlist(userId: string, pagination: SearchWishlistDto) {
     try {
-      const items = await this.wishlistRepository.getWishlist(userId);
+      const payload = await this.wishlistRepository.getWishlist(userId, pagination);
       return {
         statusCode: HttpStatus.OK,
         error: false,
         message: 'Wishlist fetched.',
-        data: {
-          count: items.length,
-          items,
-        },
+        data: payload,
       };
     } catch (error: any) {
       AppLogger.error(`Failed to get wishlist`, error.stack);

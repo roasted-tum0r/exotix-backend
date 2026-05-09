@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { IPagination } from 'src/common/interfaces/app.interface';
+import { User } from '@prisma/client';
 
 export class FilterItemDto {
   @IsOptional()
@@ -52,6 +53,8 @@ export class SearchItemDto extends FilterItemDto implements IPagination {
   @Type(() => Number)
   @IsNumber()
   limit: number;
+
+  user?: User;
 }
 
 export class RecommendationPaginationDto implements IPagination {
@@ -73,4 +76,6 @@ export class RecommendationPaginationDto implements IPagination {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isAsc: boolean;
+
+  user?: User;
 }

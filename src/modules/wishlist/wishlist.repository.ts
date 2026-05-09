@@ -1,6 +1,8 @@
 import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { SearchWishlistDto } from './dto/wishlist.dto';
+import { ImageOwnerType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class WishlistRepository {
@@ -81,48 +83,92 @@ export class WishlistRepository {
   }
 
   /**
-   * Get all wishlist items for a user with item details.
+   * Get all wishlist items for a user with item details (paginated).
    */
-  async getWishlist(userId: string) {
+  async getWishlist(userId: string, pagination: SearchWishlistDto) {
     try {
-      return await this.prismaService.userWishlist.findMany({
-        where: { userId },
-        select: {
-          id: true,
-          createdAt: true,
+      const { page, limit, sortBy, isAsc, search } = pagination;
+      
+      const where: Prisma.UserWishlistWhereInput = {
+        userId,
+        ...(search && {
           item: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              price: true,
-              image: true,
-              rating: true,
-              isAvailable: true,
-              isActive: true,
-              images: true,
-              category: {
-                select: {
-                  id: true,
-                  name: true,
+            OR: [
+              { name: { contains: search } as Prisma.StringFilter<'Item'> },
+              { description: { contains: search } as Prisma.StringFilter<'Item'> },
+            ],
+          },
+        }),
+      };
+
+      const [results, total] = await Promise.all([
+        this.prismaService.userWishlist.findMany({
+          where,
+          select: {
+            id: true,
+            createdAt: true,
+            item: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                price: true,
+                image: true,
+                rating: true,
+                isAvailable: true,
+                isActive: true,
+                images: {
+                  select: { ownerType: true, imageUrl: true, publicId: true },
+                  where: {
+                    ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL, ImageOwnerType.ITEM_GALLERY] },
+                  },
                 },
-              },
-              offer: {
-                select: {
-                  id: true,
-                  name: true,
-                  discountType: true,
-                  discountValue: true,
-                  maxDiscountAmount: true,
-                  validFrom: true,
-                  validUpto: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+                offer: {
+                  select: {
+                    id: true,
+                    name: true,
+                    discountType: true,
+                    discountValue: true,
+                    maxDiscountAmount: true,
+                    validFrom: true,
+                    validUpto: true,
+                  },
+                },
+                // Since this IS the wishlist, we know it's wishlisted for this user
+                wishlists: {
+                  where: { userId },
+                  select: { id: true },
                 },
               },
             },
           },
+          orderBy: { [sortBy]: isAsc ? 'asc' : 'desc' },
+          skip: (+page - 1) * +limit,
+          take: +limit,
+        }),
+        this.prismaService.userWishlist.count({ where }),
+      ]);
+
+      return {
+        results: results.map((r) => {
+          const transformedItem = this.transformItemImages(r.item);
+          return {
+            ...r,
+            item: transformedItem,
+          };
+        }),
+        meta: {
+          total,
+          currentPage: +page,
+          totalPages: Math.ceil(total / +limit),
         },
-        orderBy: { createdAt: 'desc' },
-      });
+      };
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -131,6 +177,20 @@ export class WishlistRepository {
         message: 'Something went wrong while fetching wishlist.',
       });
     }
+  }
+
+  /**
+   * Helper to transform item images (similar to ItemsRepository)
+   */
+  private transformItemImages(item: any) {
+    if (!item) return null;
+    const { images = [], wishlists = [], ...rest } = item;
+    return {
+      ...rest,
+      thumbnail: images.find((img) => img.ownerType === ImageOwnerType.ITEM_THUMBNAIL) ?? null,
+      gallery: images.filter((img) => img.ownerType === ImageOwnerType.ITEM_GALLERY),
+      isWishlisted: wishlists.length > 0,
+    };
   }
 
   /**

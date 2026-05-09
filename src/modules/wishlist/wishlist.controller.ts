@@ -11,7 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
-import { AddToWishlistDto } from './dto/wishlist.dto';
+import { AddToWishlistDto, SearchWishlistDto } from './dto/wishlist.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -89,9 +89,12 @@ export class WishlistController {
    * Requires login.
    */
   @Get()
-  async getWishlist(@CurrentUser() user: User) {
+  async getWishlist(
+    @Query() pagination: SearchWishlistDto,
+    @CurrentUser() user: User,
+  ) {
     try {
-      return await this.wishlistService.getWishlist(user.id);
+      return await this.wishlistService.getWishlist(user.id, pagination);
     } catch (error: any) {
       AppLogger.error(`Failed to get wishlist`, error.stack);
       if (error instanceof HttpException) throw error;

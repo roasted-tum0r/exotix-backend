@@ -88,6 +88,7 @@ export class ItemsService {
         minPrice: paginatinObject.minPrice,
         search: paginatinObject.search,
       }, user);
+      paginatinObject.user = user;
       const payload = await this.repo.findAllItems(
         paginatinObject,
         whereClause,
@@ -178,15 +179,15 @@ export class ItemsService {
     try {
       const ids = Array.isArray(id) ? id : [id];
       const AddedItems = await this.repo.findBulk(ids);
-      const itemsInCarts = AddedItems.filter(
-        (item) => item.cartItems.length > 0,
+      const itemsInUse = AddedItems.filter(
+        (item) => item.cartItems.length > 0 || item.wishlists.length > 0,
       );
-      if (itemsInCarts.length > 0)
+      if (itemsInUse.length > 0)
         throw new PreconditionFailedException({
           statusCode: HttpStatus.PRECONDITION_FAILED,
           error: true,
-          message: `The items you're trying to deactivate are already part of customer carts. This would cause business issue. For business wellfare you can only deactivate not added items.`,
-          blockedItemIds: itemsInCarts,
+          message: `The items you're trying to deactivate are already part of customer carts or wishlists. This would cause business issue. For business wellfare you can only deactivate items that are not in use.`,
+          blockedItemIds: itemsInUse,
         });
       const payload = await this.repo.remove(ids);
       return {
@@ -234,6 +235,15 @@ export class ItemsService {
 
   async hardDeleteItem(id: string) {
     try {
+      const itemCheck = await this.repo.addItemDetails(id);
+      if (itemCheck && (itemCheck.cartItems.length > 0 || itemCheck.wishlists.length > 0)) {
+        throw new PreconditionFailedException({
+          statusCode: HttpStatus.PRECONDITION_FAILED,
+          error: true,
+          message: `This item cannot be permanently deleted because it is currently in a customer's cart or wishlist.`,
+        });
+      }
+
       // Purge thumbnail + gallery images from Cloudinary and image DB first
       await this.uploadRepo.purgeImagesByRef(id, [
         ImageOwnerType.ITEM_THUMBNAIL,
@@ -303,9 +313,10 @@ export class ItemsService {
    * GET /items/:id/similar
    * Same-category items — fully paginated.
    */
-  async getSimilarItems(itemId: string, pagination: RecommendationPaginationDto) {
+  async getSimilarItems(itemId: string, pagination: RecommendationPaginationDto, user?: User) {
     try {
-      const item = await this.repo.findOne(itemId);
+      pagination.user = user;
+      const item = await this.repo.findOne(itemId, user);
       if (!item)
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
@@ -340,9 +351,10 @@ export class ItemsService {
    * GET /items/:id/also-like
    * Items in a ±30% price range — fully paginated.
    */
-  async getAlsoLikeItems(itemId: string, pagination: RecommendationPaginationDto) {
+  async getAlsoLikeItems(itemId: string, pagination: RecommendationPaginationDto, user?: User) {
     try {
-      const item = await this.repo.findOne(itemId);
+      pagination.user = user;
+      const item = await this.repo.findOne(itemId, user);
       if (!item)
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
@@ -377,8 +389,9 @@ export class ItemsService {
    * GET /items/:id/also-bought
    * Co-purchased items ranked by frequency — fully paginated.
    */
-  async getAlsoBoughtItems(itemId: string, pagination: RecommendationPaginationDto) {
+  async getAlsoBoughtItems(itemId: string, pagination: RecommendationPaginationDto, user?: User) {
     try {
+      pagination.user = user;
       const { results, total } = await this.repo.getAlsoBoughtItems(itemId, pagination);
       return {
         statusCode: HttpStatus.OK,

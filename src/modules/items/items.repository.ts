@@ -6,29 +6,40 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ImageOwnerType, Prisma, User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
 
-const RECOMMENDATION_SELECT = {
-  id: true,
-  name: true,
-  image: true,
-  price: true,
-  rating: true,
-  isAvailable: true,
-  offer: true,
-  category: { select: { id: true, name: true } },
-  images: {
-    select: { ownerType: true, imageUrl: true, publicId: true },
-    where: {
-      ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL] },
-    },
-  },
-};
-
 @Injectable()
 export class ItemsRepository {
   constructor(private prisma: PrismaService) { }
 
+  recommendationSelectFields(user?: User): Prisma.ItemSelect {
+    const userId = user?.id;
+    return {
+      id: true,
+      name: true,
+      image: true,
+      price: true,
+      rating: true,
+      isAvailable: true,
+      offer: true,
+      category: { select: { id: true, name: true } },
+      images: {
+        select: { ownerType: true, imageUrl: true, publicId: true },
+        where: {
+          ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL] },
+        },
+      },
+      // Include wishlist check if a user is logged in
+      ...(userId && {
+        wishlists: {
+          where: { userId },
+          select: { id: true },
+        },
+      }),
+    };
+  }
+
   // ─── Shared select projection ────────────────────────────────────────────────
-  itemSelectFields(): Prisma.ItemSelect {
+  itemSelectFields(user?: User): Prisma.ItemSelect {
+    const userId = user?.id;
     return {
       id: true,
       name: true,
@@ -47,14 +58,14 @@ export class ItemsRepository {
       },
       rating: true,
       isAvailable: true,
-      isActive:true,
-      
+      isActive: true,
+
       price: true,
       image: true,
       offer: true,
       _count: {
         select: {
-          reviews: true,  
+          reviews: true,
         },
       },
       images: {
@@ -63,6 +74,13 @@ export class ItemsRepository {
           ownerType: { in: [ImageOwnerType.ITEM_THUMBNAIL, ImageOwnerType.ITEM_GALLERY] },
         },
       },
+      // Include wishlist check if a user is logged in
+      ...(userId && {
+        wishlists: {
+          where: { userId },
+          select: { id: true },
+        },
+      }),
     };
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -116,28 +134,35 @@ export class ItemsRepository {
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // ─── Image shape transformer ─────────────────────────────────────────────────
   /**
    * Splits the flat `images[]` returned by Prisma into two typed properties:
    *   - `thumbnail`: the single ITEM_THUMBNAIL entry (or null)
    *   - `gallery`:   all ITEM_GALLERY entries (may be empty)
-   * The raw `images` array is removed from the output so the frontend
-   * never has to filter it manually.
+   *   - `isWishlisted`: boolean based on the wishlists array
+   * The raw `images` and `wishlists` are removed from the output.
    */
-  transformItemImages<T extends { images?: { ownerType: string; imageUrl: string; publicId: string }[] } | null>(
+  transformItemImages<T extends {
+    images?: { ownerType: string; imageUrl: string; publicId: string }[];
+    wishlists?: { id: string }[];
+  } | null>(
     item: T,
   ): T extends null
     ? null
-    : Omit<NonNullable<T>, 'images'> & {
+    : Omit<NonNullable<T>, 'images' | 'wishlists'> & {
       thumbnail: { ownerType: string; imageUrl: string; publicId: string } | null;
       gallery: { ownerType: string; imageUrl: string; publicId: string }[];
+      isWishlisted: boolean;
     } {
     if (!item) return null as any;
-    const { images = [], ...rest } = item as NonNullable<T> & { images?: { ownerType: string; imageUrl: string; publicId: string }[] };
+    const { images = [], wishlists = [], ...rest } = item as NonNullable<T> & {
+      images?: { ownerType: string; imageUrl: string; publicId: string }[];
+      wishlists?: { id: string }[];
+    };
     return {
       ...rest,
       thumbnail: images.find((img) => img.ownerType === ImageOwnerType.ITEM_THUMBNAIL) ?? null,
       gallery: images.filter((img) => img.ownerType === ImageOwnerType.ITEM_GALLERY),
+      isWishlisted: wishlists.length > 0,
     } as any;
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -164,9 +189,9 @@ export class ItemsRepository {
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
-  async create(data: CreateItemRepoDto) {
+  async create(data: CreateItemRepoDto, user?: User) {
     try {
-      return this.prisma.item.create({ data, select: this.itemSelectFields() });
+      return this.prisma.item.create({ data, select: this.itemSelectFields(user) });
     } catch (error) {
       AppLogger.error(error);
       throw new BadRequestException({
@@ -181,7 +206,7 @@ export class ItemsRepository {
       const isPrivileged = user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
       const item = await this.prisma.item.findUnique({
         where: isPrivileged ? { id } : { id, isActive: true },
-        select: this.itemSelectFields(),
+        select: this.itemSelectFields(user),
       });
       return this.transformItemImages(item);
     } catch (error) {
@@ -209,6 +234,11 @@ export class ItemsRepository {
               id: true,
             },
           },
+          wishlists: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
     } catch (error) {
@@ -229,6 +259,11 @@ export class ItemsRepository {
           isAvailable: true,
           name: true,
           cartItems: {
+            select: {
+              id: true,
+            },
+          },
+          wishlists: {
             select: {
               id: true,
             },
@@ -317,7 +352,7 @@ export class ItemsRepository {
           },
           skip: (+pagination.page - 1) * +pagination.limit,
           take: +pagination.limit,
-          select: this.itemSelectFields(),
+          select: this.itemSelectFields(pagination.user),
         }),
         this.prisma.item.count({ where }),
       ]);
@@ -495,7 +530,7 @@ export class ItemsRepository {
           orderBy: { [sortBy]: isAsc ? 'asc' : 'desc' },
           skip: (+page - 1) * +limit,
           take: +limit,
-          select: RECOMMENDATION_SELECT,
+          select: this.recommendationSelectFields(pagination.user),
         }),
         this.prisma.item.count({ where }),
       ]);
@@ -536,7 +571,7 @@ export class ItemsRepository {
           orderBy: { [sortBy]: isAsc ? 'asc' : 'desc' },
           skip: (+page - 1) * +limit,
           take: +limit,
-          select: RECOMMENDATION_SELECT,
+          select: this.recommendationSelectFields(pagination.user),
         }),
         this.prisma.item.count({ where }),
       ]);
@@ -602,7 +637,7 @@ export class ItemsRepository {
 
       const items = await this.prisma.item.findMany({
         where: { id: { in: itemIds }, isActive: true, isAvailable: true },
-        select: RECOMMENDATION_SELECT,
+        select: this.recommendationSelectFields(pagination.user),
       });
 
       // Restore co-purchase rank order

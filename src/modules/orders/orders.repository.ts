@@ -5,10 +5,15 @@ import { AppLogger } from 'src/common/utils/app.logger';
 import { ImageOwnerType, OrderStatus, PaymentStatus, User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { MailService } from 'src/services/mail/mailservice.service';
+import { Templates } from 'src/config/templates/template';
 
 @Injectable()
 export class OrdersRepository {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) { }
 
   async createOrderFromCart(userId: string, createOrderDto: CreateOrderDto) {
     try {
@@ -142,7 +147,10 @@ export class OrdersRepository {
           where: { cartId: cart.id },
         });
 
-        return this.transformOrder(order);
+        const result = this.transformOrder(order);
+        // Fire email (non-blocking)
+        this.sendOrderStatusEmail(order.id, OrderStatus.PENDING).catch(e => AppLogger.error(`Email failed: ${e.message}`));
+        return result;
       });
     } catch (error: any) {
       AppLogger.error(`Checkout failed for user ${userId}: ${error.message}`, error.stack);
@@ -362,6 +370,9 @@ export class OrdersRepository {
         },
       });
 
+      // Fire email (non-blocking)
+      this.sendOrderStatusEmail(orderId, OrderStatus.CONFIRMED).catch(e => AppLogger.error(`Email failed: ${e.message}`));
+
       return { message: 'Order confirmed successfully' };
     });
   }
@@ -439,8 +450,47 @@ export class OrdersRepository {
         },
       });
 
-      return this.transformOrder(updatedOrder, true);
+      const result = this.transformOrder(updatedOrder, true);
+
+      // Fire email (non-blocking)
+      this.sendOrderStatusEmail(orderId, dto.status).catch(e => AppLogger.error(`Email failed: ${e.message}`));
+
+      return result;
     });
+  }
+
+  private async sendOrderStatusEmail(orderId: string, status: OrderStatus) {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: true,
+          items: true,
+          payments: true,
+        },
+      });
+
+      if (!order || !order.user) return;
+
+      const html = Templates.orderUpdateEmail({
+        firstName: order.user.firstname,
+        orderNumber: order.orderNumber,
+        status: status,
+        totalAmount: Number(order.totalAmount),
+        items: order.items,
+        paymentMethod: order.payments?.[0]?.provider,
+        paymentStatus: order.paymentStatus,
+      });
+
+      await this.mailService.sendMail(
+        `Anandini <info@anandini.org.in>`,
+        order.user.email,
+        `Order Update: #${order.orderNumber} - ${status}`,
+        html,
+      );
+    } catch (error) {
+      AppLogger.error(`Failed to send order status email for order ${orderId}`, error.stack);
+    }
   }
 
   private transformOrder(order: any, isStaff: boolean = false) {

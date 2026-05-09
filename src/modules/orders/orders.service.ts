@@ -9,6 +9,7 @@ import { OrdersRepository } from './orders.repository';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
@@ -109,6 +110,26 @@ export class OrdersService {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: 'Order confirmation failed',
+      });
+    }
+  }
+
+  async updateOrderStatus(orderId: string, dto: UpdateOrderStatusDto, user: User) {
+    try {
+      const payload = await this.ordersRepository.updateOrderStatus(orderId, dto, user);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: `Order status updated to ${dto.status}`,
+        data: payload,
+      };
+    } catch (error) {
+      AppLogger.error(`Status update failed for order ${orderId}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to update order status',
       });
     }
   }

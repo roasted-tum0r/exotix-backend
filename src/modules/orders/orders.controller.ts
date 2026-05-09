@@ -9,10 +9,12 @@ import {
   HttpException,
   Query,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderSearchDto } from './dto/order-search.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -80,6 +82,26 @@ export class OrdersController {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Order confirmation failed',
+      });
+    }
+  }
+
+  @Patch('/status/:id')
+  @Roles('admin', 'employee', 'manager')
+  @UseGuards(RolesGuard)
+  async updateOrderStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderStatusDto,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      return await this.ordersService.updateOrderStatus(id, dto, user);
+    } catch (error: any) {
+      AppLogger.error(`Order status update failed`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Order status update failed',
       });
     }
   }

@@ -4,6 +4,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 import { ImageOwnerType, OrderStatus, PaymentStatus, User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @Injectable()
 export class OrdersRepository {
@@ -362,6 +363,65 @@ export class OrdersRepository {
       });
 
       return { message: 'Order confirmed successfully' };
+    });
+  }
+
+  async updateOrderStatus(orderId: string, dto: UpdateOrderStatusDto, user: User) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+
+      if (!order) {
+        throw new BadRequestException('Order not found');
+      }
+
+      // Valid Transitions Map
+      const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+        [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+        [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+        [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
+        [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.RETURNED, OrderStatus.CANCELLED],
+        [OrderStatus.DELIVERED]: [OrderStatus.RETURNED],
+        [OrderStatus.CANCELLED]: [],
+        [OrderStatus.RETURNED]: [],
+      };
+
+      if (!validTransitions[order.status].includes(dto.status)) {
+        throw new BadRequestException(
+          `Cannot transition order from ${order.status} to ${dto.status}`,
+        );
+      }
+
+      // Perform side-effects based on target status
+      if (dto.status === OrderStatus.CANCELLED || dto.status === OrderStatus.RETURNED) {
+        // TODO: Implement inventory restoration when inventory module is complete
+        // Example:
+        // for (const item of order.items) {
+        //   await tx.inventory.update({
+        //     where: { itemId_branchId: ... },
+        //     data: { quantity: { increment: item.quantity } }
+        //   });
+        // }
+      }
+
+      if (dto.status === OrderStatus.PROCESSING && order.status === OrderStatus.CONFIRMED) {
+        // TODO: Implement inventory deduction when inventory module is complete
+      }
+
+      // Update the order
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: dto.status,
+          notes: dto.notes ?? order.notes,
+          // We can append tracking info to notes if provided, or if there is a specific field
+          ...(dto.trackingNumber ? { notes: `${order.notes || ''}\nTracking: ${dto.trackingNumber}` } : {}),
+        },
+      });
+
+      return this.transformOrder(updatedOrder, true);
     });
   }
 

@@ -36,6 +36,10 @@ export class FilterItemDto {
   @IsNumber()
   @Min(0)
   maxPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  isFeatured?: 'true' | 'false';
 }
 export class SearchItemDto extends FilterItemDto implements IPagination {
   @IsNotEmpty({ message: 'Page number cant be empty' })

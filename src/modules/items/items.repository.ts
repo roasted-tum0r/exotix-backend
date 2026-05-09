@@ -19,6 +19,7 @@ export class ItemsRepository {
       price: true,
       rating: true,
       isAvailable: true,
+      isFeatured: true,
       offer: true,
       category: { select: { id: true, name: true } },
       images: {
@@ -58,6 +59,7 @@ export class ItemsRepository {
       },
       rating: true,
       isAvailable: true,
+      isFeatured: true,
       isActive: true,
 
       price: true,
@@ -91,7 +93,7 @@ export class ItemsRepository {
   // itemSelectFields() so the dashboard can highlight deactivated records.
   // Public / unauthenticated callers always receive only active items.
   buildItemWhere(filters?: FilterItemDto, user?: User): Prisma.ItemWhereInput {
-    const { search, categoryIds, isAvailable, minPrice, maxPrice } = filters || {};
+    const { search, categoryIds, isAvailable, minPrice, maxPrice, isFeatured } = filters || {};
 
     const isPrivileged = user?.role === 'ADMIN' || user?.role === 'EMPLOYEE';
     const where: Prisma.ItemWhereInput = isPrivileged ? {} : { isActive: true };
@@ -111,6 +113,10 @@ export class ItemsRepository {
 
     if (isAvailable !== undefined) {
       where.isAvailable = isAvailable === 'true';
+    }
+
+    if (isFeatured !== undefined) {
+      where.isFeatured = isFeatured === 'true';
     }
 
     const parseNumberSafe = (v?: string | number): number | undefined => {
@@ -229,6 +235,7 @@ export class ItemsRepository {
           id: true,
           name: true,
           isAvailable: true,
+          isFeatured: true,
           cartItems: {
             select: {
               id: true,
@@ -257,6 +264,7 @@ export class ItemsRepository {
         select: {
           id: true,
           isAvailable: true,
+          isFeatured: true,
           name: true,
           cartItems: {
             select: {
@@ -429,6 +437,7 @@ export class ItemsRepository {
             image: true,
             price: true,
             rating: true,
+            isFeatured: true,
             offer: true,
             category: { select: { id: true, name: true } },
             images: {
@@ -486,6 +495,7 @@ export class ItemsRepository {
           image: true,
           price: true,
           rating: true,
+          isFeatured: true,
           offer: true,
           category: { select: { id: true, name: true } },
           images: {

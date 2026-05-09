@@ -228,6 +228,7 @@ model Item {
   offerId     String?       
   offer       OfferMaster?   @relation(fields: [offerId], references: [id])
   isAvailable Boolean       @default(true)
+  isFeatured  Boolean       @default(false)
   isActive    Boolean       @default(true)
   createdBy   String
   createdAt   DateTime      @default(now())

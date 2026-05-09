@@ -87,6 +87,7 @@ export class ItemsService {
         maxPrice: paginatinObject.maxPrice,
         minPrice: paginatinObject.minPrice,
         search: paginatinObject.search,
+        isFeatured: paginatinObject.isFeatured,
       }, user);
       paginatinObject.user = user;
       const payload = await this.repo.findAllItems(

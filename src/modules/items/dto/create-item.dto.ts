@@ -38,6 +38,10 @@ export class CreateItemDto {
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 }
 
 export class CreateItemRepoDto extends CreateItemDto {

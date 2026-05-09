@@ -86,7 +86,7 @@ export class OrdersController {
     }
   }
 
-  @Patch('/status/:id')
+  @Patch('/update-status/:id')
   @Roles('admin', 'employee', 'manager')
   @UseGuards(RolesGuard)
   async updateOrderStatus(

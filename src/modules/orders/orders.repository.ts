@@ -410,6 +410,24 @@ export class OrdersRepository {
         // TODO: Implement inventory deduction when inventory module is complete
       }
 
+      // If status is being updated to CONFIRMED, we need to handle payment status as well
+      if (dto.status === OrderStatus.CONFIRMED) {
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            paymentStatus: PaymentStatus.PAID,
+          },
+        });
+
+        await tx.payment.updateMany({
+          where: { orderId },
+          data: {
+            status: PaymentStatus.PAID,
+            transactionId: dto.transactionId || `MANUAL-${Date.now()}`,
+          },
+        });
+      }
+
       // Update the order
       const updatedOrder = await tx.order.update({
         where: { id: orderId },

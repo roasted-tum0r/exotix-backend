@@ -15,4 +15,8 @@ export class UpdateOrderStatusDto {
   @IsOptional()
   @IsString()
   trackingNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
 }

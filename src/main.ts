@@ -15,7 +15,14 @@ async function bootstrap() {
     // Switch to the real frontend origin(s) once you go to production.
     origin: process.env.FRONTEND_ORIGINS
       ? process.env.FRONTEND_ORIGINS.split(',')
-      : ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:8080', 'http://localhost:8081', 'https://anandinis-exotica-store.vercel.app', 'https://anandinis-exotica-store.vercel.app'],
+      : [
+          'http://localhost:5173',
+          'http://localhost:3001',
+          'http://localhost:8080',
+          'http://localhost:8081',
+          'https://anandinis-exotica-store.vercel.app',
+          'https://anandini-s-admin-console.vercel.app',
+        ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // required for HttpOnly cookie exchange

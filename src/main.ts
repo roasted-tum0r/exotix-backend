@@ -4,6 +4,7 @@ import { Logger } from 'nestjs-pino';
 import { EncryptIdInterceptor } from './common/intercptors/encrypt-id.interceptor';
 import { DateToISOStringInterceptor } from './common/intercptors/date-transformer-interceptor';
 import * as cookieParser from 'cookie-parser';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -32,6 +33,12 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   // app.useGlobalInterceptors(app.get(EncryptIdInterceptor));
   app.useGlobalInterceptors(app.get(DateToISOStringInterceptor));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // strip non-decorated properties
+      transform: true, // transform payloads to DTO instances
+    }),
+  );
   await app.listen(process.env.PORT ?? 3000);
   console.log(`Application is running on: http://localhost:${process.env.PORT || 3000}`);
 }

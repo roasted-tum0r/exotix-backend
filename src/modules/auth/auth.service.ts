@@ -246,18 +246,8 @@ export class AuthService {
         });
       }
 
-      let storedOtp: string;
-      let pendingHashedPassword: string | null = null;
-
-      // Handle both plain OTP string and JSON object with metadata
-      try {
-        const parsed = JSON.parse(session.value);
-        storedOtp = parsed.otp;
-        pendingHashedPassword = parsed.hashedPassword || null;
-      } catch (e) {
-        // Fallback for plain string OTPs (regular logins)
-        storedOtp = session.value;
-      }
+      const storedOtp = session.value;
+      const pendingHashedPassword: string | null = null;
 
       if (storedOtp !== OTP) {
         const retryLimitReached = await this.checkAndIncrementRetry(user.id, 'login');

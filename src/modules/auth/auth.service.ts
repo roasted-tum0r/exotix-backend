@@ -32,6 +32,7 @@ import { CartRepository } from '../cart/cart.repository';
 import {
   ForgotPasswordRequestDto,
   ForgotPasswordSubmitResetDto,
+  ForgotPasswordValidateTokenDto,
 } from './dto/forgot-password.dto';
 
 @Injectable()
@@ -629,6 +630,32 @@ export class AuthService {
         error: true,
         message: error.message || 'Failed to update password. Something went wrong.',
       });
+    }
+  }
+
+  async forgotPasswordValidateToken(body: ForgotPasswordValidateTokenDto) {
+    try {
+      const storedSession = await this.redisService.getSession<{
+        value: string;
+        hash: string;
+      }>(`forgot_password_token:${body.email}`, 'LINK');
+
+      if (!storedSession || storedSession.value !== body.token) {
+        return {
+          statusCode: HttpStatus.UNAUTHORIZED,
+          valid: false,
+          message: 'Reset link is invalid or has expired.',
+        };
+      }
+
+      return {
+        statusCode: HttpStatus.OK,
+        valid: true,
+        message: 'Reset link is valid.',
+      };
+    } catch (error) {
+      AppLogger.error(`forgotPasswordValidateToken failed`, error.stack);
+      throw new InternalServerErrorException('Failed to validate reset token');
     }
   }
 

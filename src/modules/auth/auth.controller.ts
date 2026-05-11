@@ -25,6 +25,7 @@ import { UpdateAuthDto } from './dto/update-auth.dto';
 import {
   ForgotPasswordRequestDto,
   ForgotPasswordSubmitResetDto,
+  ForgotPasswordValidateTokenDto,
 } from './dto/forgot-password.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -275,6 +276,22 @@ export class AuthController {
     }
   }
 
+  @Public('forgotPasswordValidateToken')
+  @Post('/forgot-password/validate-token')
+  async forgotPasswordValidateToken(@Body() body: ForgotPasswordValidateTokenDto) {
+    try {
+      return await this.authUserService.forgotPasswordValidateToken(body);
+    } catch (error) {
+      AppLogger.error('Error in forgotPasswordValidateToken:', error);
+      if (error instanceof HttpException) throw error;
+      return {
+        statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        valid: false,
+        message: error?.message || 'Failed to validate reset token.',
+      };
+    }
+  }
+
   @Public('forgotPasswordSubmitReset')
   @Post('/forgot-password/submit-reset')
   async forgotPasswordSubmitReset(@Body() body: ForgotPasswordSubmitResetDto) {
@@ -286,7 +303,7 @@ export class AuthController {
       return {
         statusCode: error?.status || HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
-        message: error?.message || 'Failed to process password reset submission.',
+        message: error?.message || 'Failed to submit password reset.',
         data: null,
       };
     }

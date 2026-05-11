@@ -20,6 +20,16 @@ export class ForgotPasswordSubmitResetDto {
   newPassword: string;
 }
 
+export class ForgotPasswordValidateTokenDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  token: string;
+}
+
 export class ForgotPasswordVerifyOtpDto {
   @IsNotEmpty()
   @IsEmail()

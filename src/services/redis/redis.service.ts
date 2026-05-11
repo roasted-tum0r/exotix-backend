@@ -117,4 +117,25 @@ export class RedisService {
     ];
     await this.redis.del(...keys);
   }
+
+  /**
+   * Increments a retry counter in Redis and sets a TTL if it's the first attempt.
+   * @param key Redis key for the counter
+   * @param ttl TTL in seconds
+   * @returns The new count
+   */
+  async incrementRetryCount(key: string, ttl: number): Promise<number> {
+    const count = await this.redis.incr(key);
+    if (count === 1) {
+      await this.redis.expire(key, ttl);
+    }
+    return count;
+  }
+
+  /**
+   * Delete a specific key from Redis.
+   */
+  async deleteKey(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
 }

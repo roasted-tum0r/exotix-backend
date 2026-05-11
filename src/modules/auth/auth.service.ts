@@ -36,8 +36,6 @@ import {
 
 @Injectable()
 export class AuthService {
-  private static retryOtpCount: number = 0;
-  private static MAX_RETRY_COUNT: number = 5;
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
@@ -262,9 +260,10 @@ export class AuthService {
       }
 
       if (storedOtp !== OTP) {
-        const retryLimitReached = await this.retryCount();
+        const retryLimitReached = await this.checkAndIncrementRetry(user.id, 'login');
         if (retryLimitReached) {
           await this.redisService.invalidateSession(`${user.id}`, hash_key);
+          await this.redisService.deleteKey(`otp_retry:login:${user.id}`);
           throw new UnauthorizedException({
             statusCode: HttpStatus.UNAUTHORIZED,
             error: true,
@@ -278,6 +277,7 @@ export class AuthService {
         });
       } else if (storedOtp === OTP && session.hash === hash_key) {
         await this.redisService.deleteSession(sessionKey, hash_key);
+        await this.redisService.deleteKey(`otp_retry:login:${user.id}`);
 
         if (!user.isVerified) {
           await this.userRepository.updateUserVerified(user.id);
@@ -601,9 +601,10 @@ export class AuthService {
       }>(sessionKey, hash_key);
 
       if (!session || session.value !== OTP || session.hash !== hash_key) {
-        const retryLimitReached = await this.retryCount();
+        const retryLimitReached = await this.checkAndIncrementRetry(user.id, 'pwd_reset');
         if (retryLimitReached) {
           await this.redisService.deleteSession(sessionKey, hash_key);
+          await this.redisService.deleteKey(`otp_retry:pwd_reset:${user.id}`);
           throw new UnauthorizedException({
             statusCode: HttpStatus.UNAUTHORIZED,
             error: true,
@@ -619,6 +620,7 @@ export class AuthService {
 
       // Consume the session so it cannot be replayed
       await this.redisService.deleteSession(sessionKey, hash_key);
+      await this.redisService.deleteKey(`otp_retry:pwd_reset:${user.id}`);
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       await this.userRepository.updatePassword(user.id, hashedPassword);
@@ -744,11 +746,13 @@ export class AuthService {
     }
   }
 
-  private async retryCount() {
-    if (AuthService.retryOtpCount <= AuthService.MAX_RETRY_COUNT) {
-      AuthService.retryOtpCount++;
-      return false;
-    } else return true;
+  private async checkAndIncrementRetry(userId: string, flow: string) {
+    const retryKey = `otp_retry:${flow}:${userId}`;
+    const MAX_RETRY = 5;
+    const TTL = 600; // 10 minutes
+
+    const count = await this.redisService.incrementRetryCount(retryKey, TTL);
+    return count > MAX_RETRY;
   }
   async checkRedisConnection() {
     try {

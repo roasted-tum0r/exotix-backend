@@ -293,8 +293,8 @@ export class AuthService {
         await this.redisService.setRefreshToken(user.id, refreshToken, REFRESH_TTL);
         res.cookie('refresh_token', refreshToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          secure: true, // Must be true for sameSite: 'none'
+          sameSite: 'none',
           maxAge: REFRESH_TTL * 1000,
           path: '/exotix-api/auth/refresh-token',
         });
@@ -417,8 +417,8 @@ export class AuthService {
 
       res.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true, // Must be true for sameSite: 'none'
+        sameSite: 'none',
         maxAge: REFRESH_TTL * 1000,
         path: '/exotix-api/auth/refresh-token',
       });

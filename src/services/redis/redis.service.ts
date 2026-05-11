@@ -103,4 +103,18 @@ export class RedisService {
   async deleteRefreshToken(userId: string): Promise<void> {
     await this.redis.del(`refresh:${userId}`);
   }
+
+  /**
+   * Clear all active sessions, OTPs, and tokens for a user.
+   * Typically used after a password reset for security.
+   */
+  async clearAllSessions(userId: string, email: string): Promise<void> {
+    const keys = [
+      `otp:user:${userId}`,
+      `pwd_otp:user:${userId}`,
+      `refresh:${userId}`,
+      `forgot_password_token:${email}`,
+    ];
+    await this.redis.del(...keys);
+  }
 }

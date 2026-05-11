@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import {
   CreateAuthUserDto,
@@ -28,6 +29,10 @@ import { UploadRepo } from '../image-upload/upload.repo';
 import { CloudinaryService } from 'src/config/cloudinary/cloudinary.service';
 import { ImageOwnerType } from '@prisma/client';
 import { CartRepository } from '../cart/cart.repository';
+import {
+  ForgotPasswordRequestDto,
+  ForgotPasswordSubmitResetDto,
+} from './dto/forgot-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -41,6 +46,7 @@ export class AuthService {
     private readonly uploadRepo: UploadRepo,
     private readonly cloudinaryService: CloudinaryService,
     private readonly cartRepository: CartRepository,
+    private readonly configService: ConfigService,
   ) {}
   async postNewUser(body: CreateAuthUserDto) {
     try {
@@ -233,7 +239,29 @@ export class AuthService {
         value: string;
         hash: string;
       }>(sessionKey, hash_key);
-      if (!session || session.value !== OTP) {
+
+      if (!session) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: `Invalid or expired OTP session.`,
+        });
+      }
+
+      let storedOtp: string;
+      let pendingHashedPassword: string | null = null;
+
+      // Handle both plain OTP string and JSON object with metadata
+      try {
+        const parsed = JSON.parse(session.value);
+        storedOtp = parsed.otp;
+        pendingHashedPassword = parsed.hashedPassword || null;
+      } catch (e) {
+        // Fallback for plain string OTPs (regular logins)
+        storedOtp = session.value;
+      }
+
+      if (storedOtp !== OTP) {
         const retryLimitReached = await this.retryCount();
         if (retryLimitReached) {
           await this.redisService.invalidateSession(`${user.id}`, hash_key);
@@ -246,9 +274,9 @@ export class AuthService {
         throw new UnauthorizedException({
           statusCode: HttpStatus.UNAUTHORIZED,
           error: true,
-          message: `Invalid or expired OTP.`,
+          message: `Invalid OTP.`,
         });
-      } else if (session.value === OTP && session.hash === hash_key) {
+      } else if (storedOtp === OTP && session.hash === hash_key) {
         await this.redisService.deleteSession(sessionKey, hash_key);
 
         if (!user.isVerified) {
@@ -264,21 +292,22 @@ export class AuthService {
         };
         const accessToken = await this.jwtService.signAsync(accessPayload);
 
-        // ── Refresh token (15 min) – commented out, using access-token-only flow ──
-        // const REFRESH_TTL = 15 * 60; // 900 seconds
-        // const refreshPayload = { sub: user.id, type: 'refresh' };
-        // const refreshToken = await this.jwtService.signAsync(refreshPayload, {
-        //   secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
-        //   expiresIn: '15m',
-        // });
-        // await this.redisService.setRefreshToken(user.id, refreshToken, REFRESH_TTL);
-        // res.cookie('refresh_token', refreshToken, {
-        //   httpOnly: true,
-        //   secure: process.env.NODE_ENV === 'production',
-        //   sameSite: 'lax',
-        //   maxAge: REFRESH_TTL * 1000,
-        //   path: '/exotix-api/auth/refresh-token',
-        // });
+        // ── Refresh token (7 days default, 30 days if rememberMe) ──────────
+        const isRemembered = !!body.rememberMe;
+        const REFRESH_TTL = isRemembered ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+        const refreshPayload = { sub: user.id, type: 'refresh', rememberMe: isRemembered };
+        const refreshToken = await this.jwtService.signAsync(refreshPayload, {
+          secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
+          expiresIn: isRemembered ? '30d' : '7d',
+        });
+        await this.redisService.setRefreshToken(user.id, refreshToken, REFRESH_TTL);
+        res.cookie('refresh_token', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: REFRESH_TTL * 1000,
+          path: '/exotix-api/auth/refresh-token',
+        });
 
         // ── Auto-merge guest cart if guestUserId is provided ───────────────
         if (body.guestUserId) {
@@ -306,6 +335,7 @@ export class AuthService {
             branchId: user.branchId,
             createdat: user.createdAt,
             accessToken,
+            refreshToken,
             images: userImages,
           },
         });
@@ -331,91 +361,86 @@ export class AuthService {
    */
   async refreshAccessToken(refreshToken: string, res: Response) {
     try {
-      // ── Refresh-token rotation logic (commented out) ────────────────────────
-      // // 1. Verify the JWT signature & expiry
-      // let payload: { sub: string; type: string };
-      // try {
-      //   payload = await this.jwtService.verifyAsync(refreshToken, {
-      //     secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
-      //   });
-      // } catch {
-      //   throw new UnauthorizedException({
-      //     statusCode: HttpStatus.UNAUTHORIZED,
-      //     error: true,
-      //     message: 'Refresh token is invalid or expired. Please log in again.',
-      //   });
-      // }
-      //
-      // // 2. Ensure this is actually a refresh token, not an access token
-      // if (payload.type !== 'refresh') {
-      //   throw new UnauthorizedException({
-      //     statusCode: HttpStatus.UNAUTHORIZED,
-      //     error: true,
-      //     message: 'Invalid token type.',
-      //   });
-      // }
-      //
-      // // 3. Compare with the token stored in Redis (rotation replay guard)
-      // const storedToken = await this.redisService.getRefreshToken(payload.sub);
-      // if (!storedToken || storedToken !== refreshToken) {
-      //   await this.redisService.deleteRefreshToken(payload.sub);
-      //   throw new UnauthorizedException({
-      //     statusCode: HttpStatus.UNAUTHORIZED,
-      //     error: true,
-      //     message: 'Refresh token reuse detected. Please log in again.',
-      //   });
-      // }
-      //
-      // // 4. Load user to ensure account is still active
-      // const user = await this.userRepository.findByUserId(payload.sub);
-      // if (!user || !user.isActive) {
-      //   throw new UnauthorizedException({
-      //     statusCode: HttpStatus.UNAUTHORIZED,
-      //     error: true,
-      //     message: 'User account not found or deactivated.',
-      //   });
-      // }
-      //
-      // // 5. Rotate: delete old token from Redis before issuing new one
-      // await this.redisService.deleteRefreshToken(user.id);
-      //
-      // // 6. Issue new access token (10 min)
-      // const accessPayload = { sub: user.id, email: user.email, role: user.role };
-      // const newAccessToken = await this.jwtService.signAsync(accessPayload);
-      //
-      // // 7. Issue new refresh token (15 min) & persist
-      // const REFRESH_TTL = 15 * 60;
-      // const newRefreshToken = await this.jwtService.signAsync(
-      //   { sub: user.id, type: 'refresh' },
-      //   {
-      //     secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
-      //     expiresIn: '15m',
-      //   },
-      // );
-      // await this.redisService.setRefreshToken(user.id, newRefreshToken, REFRESH_TTL);
-      //
-      // res.cookie('refresh_token', newRefreshToken, {
-      //   httpOnly: true,
-      //   secure: process.env.NODE_ENV === 'production',
-      //   sameSite: 'lax',
-      //   maxAge: REFRESH_TTL * 1000,
-      //   path: '/exotix-api/auth/refresh-token',
-      // });
-      //
-      // return res.status(HttpStatus.OK).json({
-      //   statusCode: HttpStatus.OK,
-      //   error: false,
-      //   message: 'Token refreshed successfully.',
-      //   data: { accessToken: newAccessToken },
-      // });
-      // ── End of commented-out refresh-token block ────────────────────────────
+      // ── Refresh-token rotation logic ────────────────────────────────────────
+      // 1. Verify the JWT signature & expiry
+      let payload: { sub: string; type: string; rememberMe?: boolean };
+      try {
+        payload = await this.jwtService.verifyAsync(refreshToken, {
+          secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
+        });
+      } catch {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'Refresh token is invalid or expired. Please log in again.',
+        });
+      }
 
-      // Temporary: inform the caller that this flow is disabled
-      return res.status(HttpStatus.NOT_IMPLEMENTED).json({
-        statusCode: HttpStatus.NOT_IMPLEMENTED,
+      // 2. Ensure this is actually a refresh token, not an access token
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'Invalid token type.',
+        });
+      }
+
+      // 3. Compare with the token stored in Redis (rotation replay guard)
+      const storedToken = await this.redisService.getRefreshToken(payload.sub);
+      if (!storedToken || storedToken !== refreshToken) {
+        await this.redisService.deleteRefreshToken(payload.sub);
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'Refresh token reuse detected. Please log in again.',
+        });
+      }
+
+      // 4. Load user to ensure account is still active
+      const user = await this.userRepository.findByUserId(payload.sub);
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'User account not found or deactivated.',
+        });
+      }
+
+      // 5. Rotate: delete old token from Redis before issuing new one
+      await this.redisService.deleteRefreshToken(user.id);
+
+      // 6. Issue new access token (1 min)
+      const accessPayload = { sub: user.id, email: user.email, role: user.role };
+      const newAccessToken = await this.jwtService.signAsync(accessPayload);
+
+      // 7. Issue new refresh token & persist (carry over rememberMe)
+      const isRemembered = !!payload.rememberMe;
+      const REFRESH_TTL = isRemembered ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+      const newRefreshToken = await this.jwtService.signAsync(
+        { sub: user.id, type: 'refresh', rememberMe: isRemembered },
+        {
+          secret: process.env.JWT_REFRESH_SECRET ?? 'default_refresh_secret',
+          expiresIn: isRemembered ? '30d' : '7d',
+        },
+      );
+      await this.redisService.setRefreshToken(user.id, newRefreshToken, REFRESH_TTL);
+
+      res.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: REFRESH_TTL * 1000,
+        path: '/exotix-api/auth/refresh-token',
+      });
+
+      return res.status(HttpStatus.OK).json({
+        statusCode: HttpStatus.OK,
         error: false,
-        message: 'Refresh token flow is currently disabled. Please log in again to obtain a new access token.',
-        data: null,
+        message: 'Token refreshed successfully.',
+        data: { 
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken 
+        },
       });
     } catch (error) {
       AppLogger.error(`refreshAccessToken failed`, error.stack);
@@ -611,6 +636,110 @@ export class AuthService {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: error.message || 'Failed to update password. Something went wrong.',
+      });
+    }
+  }
+
+  async forgotPasswordRequest(body: ForgotPasswordRequestDto) {
+    try {
+      const user = await this.userRepository.findByEmail(body.email);
+      if (!user) {
+        // We don't want to reveal if a user exists or not for security
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'If an account with that email exists, we have sent a reset link.',
+        };
+      }
+
+      const token = AuthService.generateHash(32); // Long token for URL
+      const EXPIRY_TIME = 300; // 5 minutes
+
+      await this.redisService.setValue(
+        `forgot_password_token:${user.email}`,
+        token,
+        'LINK',
+        EXPIRY_TIME,
+      );
+
+      const frontendUrl = this.configService.get<string>('PUBLIC_UI_FRONTEND') || '';
+      const resetLink = `${frontendUrl}/forgotpassword=true&token=${token}&email=${encodeURIComponent(user.email)}`;
+
+      await this.mailService.sendMail(
+        `Anandini <info@anandini.org.in>`,
+        user.email,
+        'Password Reset Request',
+        Templates.forgotPasswordEmail({
+          firstName: user.firstname,
+          resetLink,
+          expiryMinutes: EXPIRY_TIME / 60,
+        }),
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'If an account with that email exists, we have sent a reset link.',
+      };
+    } catch (error) {
+      AppLogger.error(`forgotPasswordRequest failed`, error.stack);
+      throw new InternalServerErrorException('Failed to process password reset request');
+    }
+  }
+
+  async forgotPasswordSubmitReset(body: ForgotPasswordSubmitResetDto) {
+    try {
+      const { email, token, newPassword } = body;
+      const sessionKey = `forgot_password_token:${email}`;
+
+      const session = await this.redisService.getSession<{
+        value: string;
+        hash: string;
+      }>(sessionKey, 'LINK');
+
+      if (!session || session.value !== token) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'Invalid or expired reset link.',
+        });
+      }
+
+      const user = await this.userRepository.findByEmail(email);
+      if (!user) {
+        throw new UnauthorizedException({
+          statusCode: HttpStatus.UNAUTHORIZED,
+          error: true,
+          message: 'User account not found.',
+        });
+      }
+
+      // 1. Hash the new password and update in DB
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.userRepository.updatePassword(user.id, hashedPassword);
+
+      // 2. Clear ALL redis keys for this user (tokens, OTPs, sessions)
+      await this.redisService.clearAllSessions(user.id, email);
+
+      // 3. Send confirmation email
+      await this.mailService.sendMail(
+        `Anandini <info@anandini.org.in>`,
+        email,
+        'Password Changed Successfully',
+        Templates.passwordResetSuccessEmail({ firstName: user.firstname }),
+      );
+
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Your password has been changed successfully. All other logins for this account have been cancelled. Please login again to access the app.',
+        data: null,
+      };
+    } catch (error) {
+      AppLogger.error(`forgotPasswordSubmitReset failed`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to process password reset submission.',
       });
     }
   }

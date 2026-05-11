@@ -7,12 +7,14 @@ import { OrderSearchDto } from './dto/order-search.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { MailService } from 'src/services/mail/mailservice.service';
 import { Templates } from 'src/config/templates/template';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class OrdersRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) { }
 
   async createOrderFromCart(userId: string, createOrderDto: CreateOrderDto) {
@@ -472,12 +474,15 @@ export class OrdersRepository {
 
       if (!order || !order.user) return;
 
+      const frontendUrl = this.configService.get<string>('PUBLIC_UI_FRONTEND')||"";
+
       const html = Templates.orderUpdateEmail({
         firstName: order.user.firstname,
         orderNumber: order.orderNumber,
         status: status,
         totalAmount: Number(order.totalAmount),
         items: order.items,
+        frontendUrl: frontendUrl,
         paymentMethod: order.payments?.[0]?.provider,
         paymentStatus: order.paymentStatus,
       });

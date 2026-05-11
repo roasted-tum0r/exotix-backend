@@ -118,6 +118,57 @@ export class Templates {
     `;
   }
 
+  static forgotPasswordEmail(params: {
+    firstName: string;
+    resetLink: string;
+    expiryMinutes: number;
+  }): string {
+    const { firstName, resetLink, expiryMinutes } = params;
+
+    return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+      .container { max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+      .header { background-color: #1a4031; color: white; padding: 40px 20px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; }
+      .content { padding: 30px; color: #333; }
+      .footer { text-align: center; padding: 30px; color: #888; font-size: 12px; background: #fafafa; }
+      .btn { display: inline-block; padding: 12px 24px; background-color: #1a4031; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Forgot Your Password? 🔐</h1>
+      </div>
+      
+      <div class="content">
+        <p>Hi ${firstName},</p>
+        <p>We received a request to reset your password for your Anandini account. Click the button below to proceed:</p>
+        
+        <div style="text-align: center;">
+          <a href="${resetLink}" class="btn">Reset Password</a>
+        </div>
+        
+        <p style="margin-top: 30px;">This link will expire in <strong>${expiryMinutes} minutes</strong>.</p>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+      </div>
+      
+      <div class="footer">
+        <strong>Anandini's Exotica</strong><br/>
+        Premium International Flavors<br/>
+        &copy; ${new Date().getFullYear()} Anandini
+      </div>
+    </div>
+  </body>
+</html>
+    `;
+  }
+
    static unsubscribeConfirmationEmail(email: string): string {
     return `
 <!DOCTYPE html>
@@ -174,16 +225,67 @@ export class Templates {
     `;
   }
 
+  /**
+   * Generates an HTML template for password reset success email.
+   * @param params Object containing dynamic values
+   */
+  static passwordResetSuccessEmail(params: { firstName: string }): string {
+    const { firstName } = params;
+
+    return `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+      .container { max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+      .header { background-color: #1a4031; color: white; padding: 40px 20px; text-align: center; }
+      .header h1 { margin: 0; font-size: 28px; }
+      .content { padding: 30px; color: #333; }
+      .footer { text-align: center; padding: 30px; color: #888; font-size: 12px; background: #fafafa; }
+      .caution-box { background-color: #fff4e5; border-left: 4px solid #ffa117; padding: 15px; margin: 20px 0; font-size: 14px; color: #663c00; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Password Reset Successful! ✅</h1>
+      </div>
+      
+      <div class="content">
+        <p>Hi ${firstName},</p>
+        <p>Your password has been changed successfully.</p>
+        
+        <div class="caution-box">
+          <strong>Security Notice:</strong> All active logins for this account have been cancelled for your security. Please login again with your new password to access the application.
+        </div>
+        
+        <p>If you did not perform this action, please contact our support team immediately.</p>
+      </div>
+      
+      <div class="footer">
+        <strong>Anandini's Exotica</strong><br/>
+        Premium International Flavors<br/>
+        &copy; ${new Date().getFullYear()} Anandini
+      </div>
+    </div>
+  </body>
+</html>
+    `;
+  }
+
   static orderUpdateEmail(params: {
     firstName: string;
     orderNumber: string;
     status: string;
     totalAmount: number;
     items: any[];
+    frontendUrl: string;
     paymentMethod?: string;
     paymentStatus?: string;
   }): string {
-    const { firstName, orderNumber, status, totalAmount, items, paymentMethod, paymentStatus } = params;
+    const { firstName, orderNumber, status, totalAmount, items, frontendUrl, paymentMethod, paymentStatus } = params;
 
     let statusTitle = '';
     let statusMessage = '';
@@ -304,7 +406,7 @@ export class Templates {
         </div>
         
         <div style="text-align: center;">
-          <a href="https://anandinis.com/account/orders/${orderNumber}" class="btn">Track Your Order</a>
+          <a href="${frontendUrl}/order/${orderNumber}" class="btn">Track Your Order</a>
         </div>
         
         <p style="margin-top: 30px;">Need help? Contact our support team at <a href="mailto:support@anandini.org.in" style="color: #1a4031;">support@anandini.org.in</a></p>

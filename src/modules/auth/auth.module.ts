@@ -12,7 +12,7 @@ import { CartRepository } from '../cart/cart.repository';
 imports: [
   JwtModule.register({
     secret: process.env.JWT_SECRET ?? 'default_secret',
-    signOptions: { expiresIn: '1000m' },
+    signOptions: { expiresIn: '1m' },
   }),
 ],
   controllers: [AuthController],

@@ -73,6 +73,9 @@ export class LoginOtpVerifyDto extends LoginWithOtpDto {
   @IsOptional()
   @IsString()
   guestUserId?: string;
+
+  @IsOptional()
+  rememberMe?: boolean;
 }
 
 /** Sent to request a password-change OTP (requires auth) */

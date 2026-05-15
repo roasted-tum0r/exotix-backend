@@ -867,11 +867,17 @@ export class OrdersRepository {
   private async transformOrder(order: any, isStaff: boolean = false) {
     if (!order) return order;
 
-    // Fetch real-time payment expiry if applicable
+    // Fetch real-time payment expiries if applicable
     let paymentExpirySeconds = 0;
-    if (order.status === OrderStatus.PENDING || order.paymentStatus === PaymentStatus.FAILED) {
-      const ttl = await this.redisService.getTTL(`order_expiry:${order.id}`);
-      paymentExpirySeconds = ttl > 0 ? ttl : 0;
+    let orderExpirationSeconds = 0;
+
+    if (order.status !== OrderStatus.CANCELLED && order.status !== OrderStatus.DELIVERED) {
+      const [retryTtl, hardTtl] = await Promise.all([
+        this.redisService.getTTL(`order_expiry:${order.id}`),
+        this.redisService.getTTL(`order_hard_deadline:${order.id}`),
+      ]);
+      paymentExpirySeconds = retryTtl > 0 ? retryTtl : 0;
+      orderExpirationSeconds = hardTtl > 0 ? hardTtl : 0;
     }
 
     // Group price breakdown into a standardized paymentSummary object for the frontend
@@ -884,7 +890,7 @@ export class OrdersRepository {
       deliveryThreshold: 1000,
     };
 
-    // Inject statuses and TTL at the root
+    // Inject status and TTL at the root
     order.paymentExpirySeconds = paymentExpirySeconds;
 
     // Remove the flat fields from the root to keep the response clean

@@ -178,6 +178,13 @@ export class OrdersRepository {
               'pending',
               600, // 10 minutes
             );
+
+            // Set a 24-hour hard deadline in Redis to prevent infinite retries
+            await this.redisService.set(
+              `order_hard_deadline:${order.id}`,
+              'active',
+              86400, // 24 hours (24 * 60 * 60)
+            );
           } catch (error) {
             AppLogger.error(`Razorpay order creation failed for order ${order.id}`, error.stack);
             throw new BadRequestException('Failed to initiate online payment. Please try again.');
@@ -246,6 +253,27 @@ export class OrdersRepository {
         },
       },
     });
+
+    if (!order) return null;
+
+    // Passive Cancellation: If order is PENDING and ONLINE, but hard deadline is gone
+    const isOnline = order.payments?.some(p => p.provider === 'ONLINE');
+    if (order.status === OrderStatus.PENDING && isOnline) {
+      const deadline = await this.redisService.get(`order_hard_deadline:${order.id}`);
+      if (!deadline) {
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: OrderStatus.CANCELLED,
+            notes: order.notes ? `${order.notes}\nPayment window expired (24h limit reached).` : 'Payment window expired (24h limit reached).',
+          },
+        });
+        order.status = OrderStatus.CANCELLED;
+        // Notify user via email (passive)
+        this.sendOrderStatusEmail(order.id, OrderStatus.CANCELLED).catch(e => AppLogger.error(`Passive cancellation email failed: ${e.message}`));
+      }
+    }
+
     return this.transformOrder(order, isStaff);
   }
 
@@ -465,8 +493,9 @@ export class OrdersRepository {
         },
       });
 
-      // 3.5 Remove the expiry timer from Redis as payment is now successful
+      // 3.5 Remove the expiry timers from Redis as payment is now successful
       await this.redisService.deleteKey(`order_expiry:${orderId}`);
+      await this.redisService.deleteKey(`order_hard_deadline:${orderId}`);
 
       // 4. Fire email
       this.sendOrderStatusEmail(orderId, OrderStatus.PROCESSING).catch((e) =>
@@ -544,6 +573,27 @@ export class OrdersRepository {
         throw new BadRequestException('Cannot pay for a cancelled order');
       }
 
+      // Check if the 24-hour hard deadline has expired
+      const hardDeadline = await this.redisService.get(`order_hard_deadline:${orderId}`);
+      if (!hardDeadline) {
+        // If deadline expired, cancel the order automatically
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: OrderStatus.CANCELLED,
+            notes: order.notes ? `${order.notes}\nPayment window expired (24h limit reached).` : 'Payment window expired (24h limit reached).',
+          },
+        });
+        
+        // Cleanup 10m timer if it exists
+        await this.redisService.deleteKey(`order_expiry:${orderId}`);
+        
+        // Fire cancellation email
+        this.sendOrderStatusEmail(orderId, OrderStatus.CANCELLED).catch(e => AppLogger.error(`Cancellation email failed: ${e.message}`));
+        
+        throw new BadRequestException('The payment window for this order has expired (24-hour limit reached). Please place a new order.');
+      }
+
       // Generate a NEW Razorpay Order
       try {
         const rzpOrder = await this.razorpayService.createOrder(
@@ -603,8 +653,9 @@ export class OrdersRepository {
         },
       });
 
-      // Cleanup Redis timer
+      // Cleanup Redis timers
       await this.redisService.deleteKey(`order_expiry:${orderId}`);
+      await this.redisService.deleteKey(`order_hard_deadline:${orderId}`);
 
       // Fire email
       this.sendOrderStatusEmail(orderId, OrderStatus.CANCELLED).catch((e) =>

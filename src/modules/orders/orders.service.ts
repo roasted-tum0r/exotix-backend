@@ -10,6 +10,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { User } from '@prisma/client';
 import { OrderSearchDto } from './dto/order-search.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { AppLogger } from 'src/common/utils/app.logger';
 
 @Injectable()
@@ -113,7 +114,6 @@ export class OrdersService {
       });
     }
   }
-
   async updateOrderStatus(orderId: string, dto: UpdateOrderStatusDto, user: User) {
     try {
       const payload = await this.ordersRepository.updateOrderStatus(orderId, dto, user);
@@ -130,6 +130,92 @@ export class OrdersService {
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         error: true,
         message: 'Failed to update order status',
+      });
+    }
+  }
+
+  async verifyPayment(dto: VerifyPaymentDto, user: User) {
+    try {
+      const payload = await this.ordersRepository.verifyRazorpayPayment(
+        dto.orderId,
+        dto.razorpayOrderId,
+        dto.razorpayPaymentId,
+        dto.razorpaySignature,
+        user.id,
+      );
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: payload.message,
+        data: payload,
+      };
+    } catch (error) {
+      AppLogger.error(`Payment verification failed for order ${dto.orderId}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Payment verification failed',
+      });
+    }
+  }
+
+  async handlePaymentFailure(orderId: string) {
+    try {
+      const payload = await this.ordersRepository.handlePaymentFailure(orderId);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Payment failure handled',
+        data: payload,
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to handle payment failure for order ${orderId}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to record payment failure',
+      });
+    }
+  }
+
+  async initiatePaymentRetry(orderId: string, user: User) {
+    try {
+      const payload = await this.ordersRepository.initiatePaymentRetry(orderId, user.id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Payment retry initiated',
+        data: payload,
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to initiate payment retry for order ${orderId}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to initiate payment retry',
+      });
+    }
+  }
+
+  async cancelOrder(orderId: string, user: User) {
+    try {
+      const payload = await this.ordersRepository.cancelOrder(orderId, user.id);
+      return {
+        statusCode: HttpStatus.OK,
+        error: false,
+        message: 'Order cancelled successfully',
+        data: payload,
+      };
+    } catch (error) {
+      AppLogger.error(`Failed to cancel order ${orderId}`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: true,
+        message: 'Failed to cancel order',
       });
     }
   }

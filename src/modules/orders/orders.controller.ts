@@ -15,6 +15,7 @@ import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderSearchDto } from './dto/order-search.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { AppLogger } from 'src/common/utils/app.logger';
@@ -104,5 +105,34 @@ export class OrdersController {
         message: 'Order status update failed',
       });
     }
+  }
+
+  @Post('/verify-payment')
+  async verifyPayment(@CurrentUser() user: User, @Body() verifyPaymentDto: VerifyPaymentDto) {
+    try {
+      return await this.ordersService.verifyPayment(verifyPaymentDto, user);
+    } catch (error: any) {
+      AppLogger.error(`Payment verification failed`, error.stack);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: 'Payment verification failed',
+      });
+    }
+  }
+
+  @Post('/payment-failed')
+  async handlePaymentFailure(@Body('orderId') orderId: string) {
+    return await this.ordersService.handlePaymentFailure(orderId);
+  }
+
+  @Post('/retry-payment/:id')
+  async retryPayment(@CurrentUser() user: User, @Param('id') id: string) {
+    return await this.ordersService.initiatePaymentRetry(id, user);
+  }
+
+  @Post('/cancel/:id')
+  async cancelOrder(@CurrentUser() user: User, @Param('id') id: string) {
+    return await this.ordersService.cancelOrder(id, user);
   }
 }

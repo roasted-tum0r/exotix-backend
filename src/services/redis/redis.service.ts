@@ -133,9 +133,34 @@ export class RedisService {
   }
 
   /**
+   * Set a generic key-value pair in Redis.
+   */
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    if (ttl) {
+      await this.redis.set(key, value, 'EX', ttl);
+    } else {
+      await this.redis.set(key, value);
+    }
+  }
+
+  /**
+   * Get a generic value from Redis.
+   */
+  async get(key: string): Promise<string | null> {
+    return await this.redis.get(key);
+  }
+
+  /**
    * Delete a specific key from Redis.
    */
   async deleteKey(key: string): Promise<void> {
     await this.redis.del(key);
+  }
+
+  /**
+   * Get all keys matching a pattern.
+   */
+  async getKeys(pattern: string): Promise<string[]> {
+    return await this.redis.keys(pattern);
   }
 }

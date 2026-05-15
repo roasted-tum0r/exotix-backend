@@ -8,6 +8,8 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { MailService } from 'src/services/mail/mailservice.service';
 import { Templates } from 'src/config/templates/template';
 import { ConfigService } from '@nestjs/config';
+import { RazorpayService } from 'src/services/razorpay/razorpay.service';
+import { RedisService } from 'src/services/redis/redis.service';
 
 @Injectable()
 export class OrdersRepository {
@@ -15,6 +17,8 @@ export class OrdersRepository {
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
+    private readonly razorpayService: RazorpayService,
+    private readonly redisService: RedisService,
   ) { }
 
   async createOrderFromCart(userId: string, createOrderDto: CreateOrderDto) {
@@ -135,7 +139,7 @@ export class OrdersRepository {
         });
 
         // 6. Create initial Payment entry
-        await tx.payment.create({
+        const payment = await tx.payment.create({
           data: {
             orderId: order.id,
             amount: totalAmount,
@@ -150,6 +154,36 @@ export class OrdersRepository {
         });
 
         const result = this.transformOrder(order);
+
+        // 8. Razorpay Order Integration
+        if (createOrderDto.paymentMethod === 'ONLINE') {
+          try {
+            const rzpOrder = await this.razorpayService.createOrder(totalAmount, order.orderNumber);
+            result.razorpayOrderId = rzpOrder.id;
+            result.razorpayKey = this.configService.get<string>('RAZORPAY_KEY_ID');
+            
+            // Update payment with razorpay order id in metadata
+            await tx.payment.update({
+              where: { id: payment.id },
+              data: {
+                paymentMetadata: {
+                  razorpayOrderId: rzpOrder.id,
+                } as any,
+              },
+            });
+
+            // Set a 10-minute expiry in Redis to track pending online payments
+            await this.redisService.set(
+              `order_expiry:${order.id}`,
+              'pending',
+              600, // 10 minutes
+            );
+          } catch (error) {
+            AppLogger.error(`Razorpay order creation failed for order ${order.id}`, error.stack);
+            throw new BadRequestException('Failed to initiate online payment. Please try again.');
+          }
+        }
+
         // Fire email (non-blocking)
         this.sendOrderStatusEmail(order.id, OrderStatus.PENDING).catch(e => AppLogger.error(`Email failed: ${e.message}`));
         return result;
@@ -379,6 +413,208 @@ export class OrdersRepository {
     });
   }
 
+  async verifyRazorpayPayment(
+    orderId: string,
+    razorpayOrderId: string,
+    razorpayPaymentId: string,
+    razorpaySignature: string,
+    userId: string,
+  ) {
+    // 1. Verify Signature
+    const isValid = this.razorpayService.verifySignature(
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    );
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid payment signature');
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      // 2. Fetch order and check ownership
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { payments: true },
+      });
+
+      if (!order || order.userId !== userId) {
+        throw new BadRequestException('Order not found or access denied');
+      }
+
+      // 3. Update Order and Payment status
+      // User said: payment status to done (PAID) and order to processing
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: PaymentStatus.PAID,
+          status: OrderStatus.PROCESSING,
+        },
+      });
+
+      await tx.payment.updateMany({
+        where: { orderId },
+        data: {
+          status: PaymentStatus.PAID,
+          transactionId: razorpayPaymentId,
+          paymentMetadata: {
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature,
+          } as any,
+        },
+      });
+
+      // 3.5 Remove the expiry timer from Redis as payment is now successful
+      await this.redisService.deleteKey(`order_expiry:${orderId}`);
+
+      // 4. Fire email
+      this.sendOrderStatusEmail(orderId, OrderStatus.PROCESSING).catch((e) =>
+        AppLogger.error(`Email failed: ${e.message}`),
+      );
+
+      return { message: 'Payment verified and order is being processed' };
+    });
+  }
+
+  async handlePaymentFailure(orderId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { user: true },
+      });
+
+      if (!order) throw new BadRequestException('Order not found');
+
+      // Update statuses to indicate failure
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: PaymentStatus.FAILED,
+          status: OrderStatus.PENDING, // Still pending, allowing retry
+        },
+      });
+
+      await tx.payment.updateMany({
+        where: { orderId },
+        data: {
+          status: PaymentStatus.FAILED,
+        },
+      });
+
+      // Fire failure email
+      if (order.user) {
+        const frontendUrl = this.configService.get<string>('PUBLIC_UI_FRONTEND') || '';
+        const html = Templates.paymentFailedEmail({
+          firstName: order.user.firstname,
+          orderNumber: order.orderNumber,
+          totalAmount: Number(order.totalAmount),
+          paymentLink: `${frontendUrl}/order/${order.orderNumber}`,
+          expiryMinutes: 10,
+        });
+
+        await this.mailService.sendMail(
+          `Anandini <info@anandini.org.in>`,
+          order.user.email,
+          `Action Required: Payment Failed for #${order.orderNumber}`,
+          html,
+        );
+      }
+
+      return { message: 'Failure recorded and user notified' };
+    });
+  }
+
+  async initiatePaymentRetry(orderId: string, userId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { payments: true },
+      });
+
+      if (!order || order.userId !== userId) {
+        throw new BadRequestException('Order not found or access denied');
+      }
+
+      if (order.paymentStatus === PaymentStatus.PAID) {
+        throw new BadRequestException('This order is already paid');
+      }
+
+      if (order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Cannot pay for a cancelled order');
+      }
+
+      // Generate a NEW Razorpay Order
+      try {
+        const rzpOrder = await this.razorpayService.createOrder(
+          Number(order.totalAmount),
+          order.orderNumber,
+        );
+
+        // Update the payment metadata with the NEW ID
+        const payment = order.payments[0];
+        if (payment) {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              paymentMetadata: {
+                razorpayOrderId: rzpOrder.id,
+                retryAttemptedAt: new Date(),
+              } as any,
+            },
+          });
+        }
+
+        // Refresh the 10-minute timer in Redis for this new attempt
+        await this.redisService.set(`order_expiry:${order.id}`, 'pending', 600);
+
+        return {
+          razorpayOrderId: rzpOrder.id,
+          razorpayKey: this.configService.get<string>('RAZORPAY_KEY_ID'),
+          amount: Number(order.totalAmount),
+          orderNumber: order.orderNumber,
+        };
+      } catch (error) {
+        AppLogger.error(`Failed to regenerate Razorpay order for ${orderId}`, error.stack);
+        throw new BadRequestException('Could not initiate payment. Please try again.');
+      }
+    });
+  }
+
+  async cancelOrder(orderId: string, userId: string) {
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order || order.userId !== userId) {
+        throw new BadRequestException('Order not found or access denied');
+      }
+
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException(`Cannot cancel an order that is already ${order.status}`);
+      }
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.CANCELLED,
+          notes: order.notes ? `${order.notes}\nCancelled by user.` : 'Cancelled by user.',
+        },
+      });
+
+      // Cleanup Redis timer
+      await this.redisService.deleteKey(`order_expiry:${orderId}`);
+
+      // Fire email
+      this.sendOrderStatusEmail(orderId, OrderStatus.CANCELLED).catch((e) =>
+        AppLogger.error(`Cancellation email failed: ${e.message}`),
+      );
+
+      return { message: 'Order cancelled successfully', order: updatedOrder };
+    });
+  }
+
   async updateOrderStatus(orderId: string, dto: UpdateOrderStatusDto, user: User) {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -474,23 +710,38 @@ export class OrdersRepository {
 
       if (!order || !order.user) return;
 
-      const frontendUrl = this.configService.get<string>('PUBLIC_UI_FRONTEND')||"";
+      const frontendUrl = this.configService.get<string>('PUBLIC_UI_FRONTEND') || '';
+      
+      let html = '';
+      let subject = `Order Update: #${order.orderNumber} - ${status}`;
 
-      const html = Templates.orderUpdateEmail({
-        firstName: order.user.firstname,
-        orderNumber: order.orderNumber,
-        status: status,
-        totalAmount: Number(order.totalAmount),
-        items: order.items,
-        frontendUrl: frontendUrl,
-        paymentMethod: order.payments?.[0]?.provider,
-        paymentStatus: order.paymentStatus,
-      });
+      if (status === OrderStatus.CANCELLED) {
+        html = Templates.orderCancelledEmail({
+          firstName: order.user.firstname,
+          orderNumber: order.orderNumber,
+          totalAmount: Number(order.totalAmount),
+          frontendUrl: frontendUrl,
+        });
+        subject = `Order Cancelled: #${order.orderNumber}`;
+      } else {
+        html = Templates.orderUpdateEmail({
+          firstName: order.user.firstname,
+          orderNumber: order.orderNumber,
+          status: status,
+          totalAmount: Number(order.totalAmount),
+          items: order.items,
+          shippingAddress: order.shippingAddress,
+          frontendUrl: frontendUrl,
+          paymentMethod: order.payments?.[0]?.provider,
+          paymentStatus: order.paymentStatus,
+          createdAt: order.createdAt,
+        });
+      }
 
       await this.mailService.sendMail(
         `Anandini <info@anandini.org.in>`,
         order.user.email,
-        `Order Update: #${order.orderNumber} - ${status}`,
+        subject,
         html,
       );
     } catch (error) {

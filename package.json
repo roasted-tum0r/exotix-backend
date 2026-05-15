@@ -44,6 +44,7 @@
     "pino-http": "^10.5.0",
     "pino-pretty": "^13.1.1",
     "prisma": "6",
+    "razorpay": "^2.9.6",
     "redis": "^5.7.0",
     "reflect-metadata": "^0.2.2",
     "resend": "^4.8.0",

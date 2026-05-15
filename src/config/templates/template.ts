@@ -281,144 +281,220 @@ export class Templates {
     status: string;
     totalAmount: number;
     items: any[];
+    shippingAddress: any;
     frontendUrl: string;
     paymentMethod?: string;
     paymentStatus?: string;
+    createdAt?: Date;
   }): string {
-    const { firstName, orderNumber, status, totalAmount, items, frontendUrl, paymentMethod, paymentStatus } = params;
+    const { firstName, orderNumber, status, totalAmount, items, shippingAddress, frontendUrl, paymentMethod, paymentStatus, createdAt } = params;
 
-    let statusTitle = '';
-    let statusMessage = '';
-    let statusIcon = '';
+    const statusConfig: Record<string, { title: string; color: string; icon: string; msg: string }> = {
+      'PENDING': { title: 'Order Received', color: '#e67e22', icon: '📦', msg: 'We have received your order and it is currently awaiting confirmation.' },
+      'CONFIRMED': { title: 'Order Confirmed', color: '#27ae60', icon: '✅', msg: 'Your order has been confirmed and is now in our queue.' },
+      'PROCESSING': { title: 'Preparing Your Order', color: '#2980b9', icon: '👨‍🍳', msg: 'Our team is carefully preparing your exotic selection.' },
+      'SHIPPED': { title: 'Out for Delivery', color: '#8e44ad', icon: '🚚', msg: 'Your package has been handed over to our courier partner.' },
+      'DELIVERED': { title: 'Delivered', color: '#2ecc71', icon: '🏠', msg: 'Enjoy your purchase! Your order has been successfully delivered.' },
+      'CANCELLED': { title: 'Order Cancelled', color: '#c0392b', icon: '❌', msg: 'This order has been cancelled.' },
+      'RETURNED': { title: 'Order Returned', color: '#7f8c8d', icon: '🔄', msg: 'We have processed the return for this order.' },
+    };
 
-    switch (status) {
-      case 'PENDING':
-        statusTitle = 'Order Placed! 📦';
-        statusMessage = 'Thank you for your order! We have received it and it is currently pending confirmation.';
-        statusIcon = '🛒';
-        break;
-      case 'CONFIRMED':
-        statusTitle = 'Order Confirmed! ✅';
-        statusMessage = 'Great news! Your order has been confirmed and is officially in our system.';
-        statusIcon = '✨';
-        break;
-      case 'PROCESSING':
-        statusTitle = 'Order is being Prepared! 👨‍🍳';
-        statusMessage = 'We are currently preparing your items with care. Almost there!';
-        statusIcon = '📦';
-        break;
-      case 'SHIPPED':
-        statusTitle = 'Order Shipped! 🚚';
-        statusMessage = 'Your order is on its way to you! It has been handed over to our delivery partner.';
-        statusIcon = '✈️';
-        break;
-      case 'DELIVERED':
-        statusTitle = 'Order Delivered! 🎉';
-        statusMessage = 'Success! Your order has been delivered. We hope you enjoy your purchase!';
-        statusIcon = '🏠';
-        break;
-      case 'CANCELLED':
-        statusTitle = 'Order Cancelled ❌';
-        statusMessage = 'Your order has been cancelled. If you have any questions, please reach out to our support.';
-        statusIcon = '⚠️';
-        break;
-      case 'RETURNED':
-        statusTitle = 'Order Returned 🔄';
-        statusMessage = 'We have processed the return for your order.';
-        statusIcon = '🔙';
-        break;
-      default:
-        statusTitle = `Order Update: ${status}`;
-        statusMessage = `The status of your order ${orderNumber} has been updated to ${status}.`;
-    }
+    const config = statusConfig[status] || { title: `Update: ${status}`, color: '#1a4031', icon: '🔔', msg: `Your order status is now ${status}.` };
 
-    const itemsHtml = items
-      .map(
-        (item) => `
+    const itemsHtml = items.map(item => `
       <tr>
-        <td style="padding: 12px 10px; border-bottom: 1px solid #eee;">
-          <div style="font-weight: bold; color: #333;">${item.itemName || item.name}</div>
+        <td style="padding: 15px 0; border-bottom: 1px solid #edf2f7;">
+          <div style="font-weight: 600; color: #2d3748; font-size: 15px;">${item.itemName || 'Exotic Item'}</div>
+          <div style="font-size: 13px; color: #718096; margin-top: 2px;">Qty: ${item.quantity}</div>
         </td>
-        <td style="padding: 12px 10px; border-bottom: 1px solid #eee; text-align: center; color: #666;">x${item.quantity}</td>
-        <td style="padding: 12px 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #333;">$${Number(item.priceAtPurchase || item.price).toFixed(2)}</td>
+        <td style="padding: 15px 0; border-bottom: 1px solid #edf2f7; text-align: right; font-weight: 600; color: #2d3748;">
+          ₹${Number(item.priceAtPurchase || 0).toLocaleString('en-IN')}
+        </td>
       </tr>
-    `,
-      )
-      .join('');
+    `).join('');
+
+    const address = typeof shippingAddress === 'string' ? shippingAddress : 
+      `${shippingAddress?.houseNo || ''} ${shippingAddress?.streetName || ''}, ${shippingAddress?.city || ''}, ${shippingAddress?.state || ''} - ${shippingAddress?.zipcode || shippingAddress?.postalCode || ''}`;
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', -apple-system, sans-serif; background-color: #f7fafc; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #f7fafc; padding: 40px 0; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .header { background-color: #1a4031; color: #ffffff; padding: 40px 30px; text-align: center; }
+    .content { padding: 40px 30px; color: #4a5568; }
+    .status-banner { background-color: ${config.color}15; border-left: 4px solid ${config.color}; padding: 15px 20px; border-radius: 8px; margin-bottom: 30px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #a0aec0; margin-bottom: 15px; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; }
+    .info-grid { display: table; width: 100%; margin-bottom: 30px; }
+    .info-col { display: table-cell; width: 50%; vertical-align: top; padding-right: 15px; }
+    .footer { background-color: #f8fafc; padding: 30px; text-align: center; color: #718096; font-size: 13px; border-top: 1px solid #edf2f7; }
+    .btn { display: inline-block; padding: 14px 28px; background-color: #1a4031; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div style="font-size: 40px; margin-bottom: 15px;">${config.icon}</div>
+        <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em;">${config.title}</h1>
+        <p style="margin: 10px 0 0; opacity: 0.9; font-size: 15px;">Order #${orderNumber}</p>
+      </div>
+
+      <div class="content">
+        <p style="font-size: 16px; margin-top: 0;">Hi <strong>${firstName}</strong>,</p>
+        <div class="status-banner">
+          <p style="margin: 0; color: ${config.color}; font-weight: 600; font-size: 15px;">${config.msg}</p>
+        </div>
+
+        <div class="section-title">Shipping To</div>
+        <p style="font-size: 14px; line-height: 1.6; margin-bottom: 30px; color: #2d3748;">
+          ${address}
+        </p>
+
+        <div class="section-title">Order Summary</div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          ${itemsHtml}
+          <tr>
+            <td style="padding: 20px 0 0; font-weight: 700; color: #1a4031; font-size: 18px;">Total Paid</td>
+            <td style="padding: 20px 0 0; text-align: right; font-weight: 700; color: #1a4031; font-size: 18px;">₹${totalAmount.toLocaleString('en-IN')}</td>
+          </tr>
+        </table>
+
+        <div class="info-grid">
+          <div class="info-col">
+            <div class="section-title">Payment</div>
+            <div style="font-size: 14px; color: #2d3748;"><strong>Method:</strong> ${paymentMethod || 'N/A'}</div>
+            <div style="font-size: 14px; color: ${paymentStatus === 'PAID' ? '#27ae60' : '#e67e22'}; font-weight: 600; margin-top: 4px;">${paymentStatus || 'PENDING'}</div>
+          </div>
+          <div class="info-col">
+            <div class="section-title">Date</div>
+            <div style="font-size: 14px; color: #2d3748;">${createdAt ? new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today'}</div>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 10px;">
+          <a href="${frontendUrl}/order/${orderNumber}" class="btn">View Full Order Details</a>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div style="font-weight: 700; color: #1a4031; margin-bottom: 5px;">Anandini's Exotica</div>
+        <p style="margin: 0;">Premium International Dry Fruits & Nuts</p>
+        <p style="margin: 15px 0 0; font-size: 11px;">&copy; ${new Date().getFullYear()} Anandini. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
+
+  static paymentFailedEmail(params: {
+    firstName: string;
+    orderNumber: string;
+    totalAmount: number;
+    paymentLink: string;
+    expiryMinutes: number;
+  }): string {
+    const { firstName, orderNumber, totalAmount, paymentLink, expiryMinutes } = params;
 
     return `
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <style>
-      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-      .container { max-width: 600px; margin: auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-      .header { background-color: #1a4031; color: white; padding: 40px 20px; text-align: center; }
-      .header h1 { margin: 0; font-size: 28px; }
-      .status-badge { display: inline-block; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; margin-top: 15px; font-weight: bold; }
-      .content { padding: 30px; color: #333; }
-      .order-box { background: #f9f9f9; border-radius: 10px; padding: 20px; margin: 20px 0; border: 1px solid #eee; }
-      .item-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-      .total-row { font-weight: bold; font-size: 18px; color: #1a4031; }
-      .payment-info { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ddd; font-size: 14px; }
-      .footer { text-align: center; padding: 30px; color: #888; font-size: 12px; background: #fafafa; }
-      .btn { display: inline-block; padding: 12px 24px; background-color: #1a4031; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 25px; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <div style="font-size: 50px; margin-bottom: 10px;">${statusIcon}</div>
-        <h1>${statusTitle}</h1>
-        <div class="status-badge">Order #${orderNumber}</div>
-      </div>
-      
-      <div class="content">
-        <p>Hi ${firstName},</p>
-        <p>${statusMessage}</p>
-        
-        <div class="order-box">
-          <div style="font-size: 16px; font-weight: bold; padding-bottom: 10px; border-bottom: 2px solid #1a4031; color: #1a4031;">Order Contents</div>
-          <table class="item-table">
-            <thead>
-              <tr style="text-align: left; font-size: 12px; text-transform: uppercase; color: #999;">
-                <th style="padding: 10px;">Item</th>
-                <th style="padding: 10px; text-align: center;">Qty</th>
-                <th style="padding: 10px; text-align: right;">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td colspan="2" style="padding: 20px 10px 10px 10px;">Total Amount</td>
-                <td style="padding: 20px 10px 10px 10px; text-align: right;">$${Number(totalAmount).toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <div class="payment-info">
-            <div style="margin-bottom: 5px;"><strong>Payment Method:</strong> ${paymentMethod || 'N/A'}</div>
-            <div><strong>Payment Status:</strong> <span style="color: ${paymentStatus === 'PAID' ? '#27ae60' : '#e67e22'}">${paymentStatus || 'PENDING'}</span></div>
-          </div>
-        </div>
-        
-        <div style="text-align: center;">
-          <a href="${frontendUrl}/order/${orderNumber}" class="btn">Track Your Order</a>
-        </div>
-        
-        <p style="margin-top: 30px;">Need help? Contact our support team at <a href="mailto:support@anandini.org.in" style="color: #1a4031;">support@anandini.org.in</a></p>
-      </div>
-      
-      <div class="footer">
-        <strong>Anandini's Exotica</strong><br/>
-        Premium International Flavors<br/>
-        &copy; ${new Date().getFullYear()} Anandini
-      </div>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #fff5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #feb2b2; }
+    .header { background-color: #c53030; color: #ffffff; padding: 40px; text-align: center; }
+    .content { padding: 40px; text-align: center; color: #4a5568; }
+    .amount-box { background: #fef2f2; border-radius: 12px; padding: 25px; margin: 25px 0; }
+    .btn { display: inline-block; padding: 16px 32px; background-color: #1a4031; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; margin-top: 10px; }
+    .timer { font-weight: 700; color: #c53030; font-size: 18px; display: block; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="font-size: 50px; margin-bottom: 10px;">⚠️</div>
+      <h1 style="margin: 0;">Action Required</h1>
+      <p style="margin: 10px 0 0; opacity: 0.9;">Payment Failed for #${orderNumber}</p>
     </div>
-  </body>
+    <div class="content">
+      <p style="font-size: 16px;">Hi ${firstName},</p>
+      <p>We encountered an issue while processing your payment. Don't worry, your exotic items are **on hold** for you, but only for a limited time.</p>
+      
+      <div class="amount-box">
+        <div style="font-size: 13px; text-transform: uppercase; color: #9b2c2c; letter-spacing: 0.05em; font-weight: 700;">Total Payable</div>
+        <div style="font-size: 32px; font-weight: 800; color: #2d3748; margin: 5px 0;">₹${totalAmount.toLocaleString('en-IN')}</div>
+        <span class="timer">⏱️ Window expires in ${expiryMinutes} minutes</span>
+      </div>
+
+      <p style="margin-bottom: 30px;">Please click below to retry the payment using a different card or method.</p>
+      
+      <a href="${paymentLink}" class="btn">Retry Payment Now</a>
+      
+      <p style="font-size: 13px; color: #a0aec0; margin-top: 40px;">If you face any issues, contact us at info@anandini.org.in</p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
+
+  static orderCancelledEmail(params: {
+    firstName: string;
+    orderNumber: string;
+    totalAmount: number;
+    frontendUrl: string;
+  }): string {
+    const { firstName, orderNumber, frontendUrl } = params;
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .header { background-color: #4a5568; color: #ffffff; padding: 40px; text-align: center; }
+    .content { padding: 40px; text-align: center; color: #4a5568; }
+    .btn { display: inline-block; padding: 14px 28px; border: 2px solid #1a4031; color: #1a4031; text-decoration: none; border-radius: 8px; font-weight: 700; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="font-size: 40px; margin-bottom: 10px;">📉</div>
+      <h1 style="margin: 0; font-size: 24px;">Order Cancelled</h1>
+      <p style="margin: 10px 0 0; opacity: 0.8;">Order #${orderNumber}</p>
+    </div>
+    <div class="content">
+      <p style="font-size: 16px;">Hi ${firstName},</p>
+      <p>As requested, your order <strong>#${orderNumber}</strong> has been cancelled.</p>
+      
+      <div style="margin: 30px 0; color: #718096; font-size: 14px;">
+        Any amount deducted (if any) will be refunded within 5-7 business days to your original payment method.
+      </div>
+
+      <p>Changed your mind? We have plenty more exotic treats waiting for you.</p>
+      
+      <a href="${frontendUrl}" class="btn">Return to Store</a>
+    </div>
+    <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #a0aec0;">
+      &copy; ${new Date().getFullYear()} Anandini's Exotica
+    </div>
+  </div>
+</body>
 </html>
     `;
   }

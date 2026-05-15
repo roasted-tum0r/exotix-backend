@@ -28,9 +28,11 @@ import { OptionalAuthGuard } from './auth/optionalguards/optional-auth.guard';
 import { BannersModule } from './modules/banners/banners.module';
 import { AppDataModule } from './modules/app-data/app-data.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { RazorpayModule } from './services/razorpay/razorpay.module';
 
 @Module({
   imports: [
+    RazorpayModule,
     RedisModule,
     AuthModule,
     PrismaModule,

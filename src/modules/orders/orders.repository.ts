@@ -463,7 +463,16 @@ export class OrdersRepository {
       // Fire email (non-blocking)
       this.sendOrderStatusEmail(orderId, OrderStatus.CONFIRMED).catch(e => AppLogger.error(`Email failed: ${e.message}`));
 
-      return { message: 'Order confirmed successfully' };
+      const updatedOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { item: { include: { images: true } } } },
+          payments: true,
+          user: true,
+        },
+      });
+
+      return this.transformOrder(updatedOrder);
     });
   }
 
@@ -528,7 +537,16 @@ export class OrdersRepository {
         AppLogger.error(`Email failed: ${e.message}`),
       );
 
-      return { message: 'Payment verified and order is being processed' };
+      const updatedOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { item: { include: { images: true } } } },
+          payments: true,
+          user: true,
+        },
+      });
+
+      return this.transformOrder(updatedOrder);
     });
   }
 

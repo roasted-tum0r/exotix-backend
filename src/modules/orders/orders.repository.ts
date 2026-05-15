@@ -705,7 +705,7 @@ export class OrdersRepository {
         throw new BadRequestException('Order not found or access denied');
       }
 
-      if (order.status !== OrderStatus.PENDING) {
+      if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
         throw new BadRequestException(`Cannot cancel an order that is already ${order.status}`);
       }
 

@@ -127,8 +127,8 @@ export class OrdersRepository {
             contactNumber: resolvedContactNumber,
             couponId: createOrderDto.couponId,
             notes: createOrderDto.notes,
-            status: OrderStatus.PENDING,
-            paymentStatus: PaymentStatus.PENDING,
+            status: OrderStatus.CONFIRMED,
+            paymentStatus: PaymentStatus.UNPAID,
             items: {
               create: orderItemsData,
             },
@@ -567,7 +567,7 @@ export class OrdersRepository {
         where: { id: orderId },
         data: {
           paymentStatus: PaymentStatus.FAILED,
-          status: OrderStatus.PENDING, // Still pending, allowing retry
+          status: OrderStatus.CONFIRMED, // Keep confirmed even if payment fails
         },
       });
 

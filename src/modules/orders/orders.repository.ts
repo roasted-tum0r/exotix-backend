@@ -21,6 +21,27 @@ export class OrdersRepository {
     private readonly redisService: RedisService,
   ) { }
 
+  /**
+   * Centralized logic for price breakdown
+   * Subtotal = items price * quantity
+   * GST = 18%
+   * Delivery = ₹50, free if subtotal > ₹1000
+   */
+  calculateOrderTotals(itemsPrice: number) {
+    const subtotal = itemsPrice;
+    const gstRate = 0.18;
+    const gstAmount = subtotal * gstRate;
+    const deliveryFee = subtotal > 1000 ? 0 : 500;
+    const totalAmount = subtotal + gstAmount + deliveryFee;
+
+    return {
+      subtotal: Math.round(subtotal * 100) / 100,
+      gstAmount: Math.round(gstAmount * 100) / 100,
+      deliveryFee: Math.round(deliveryFee * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+    };
+  }
+
   async createOrderFromCart(userId: string, createOrderDto: CreateOrderDto) {
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -63,10 +84,10 @@ export class OrdersRepository {
         }
 
         // 3. Calculate totals and prepare item snapshots
-        let totalAmount = 0;
+        let subtotal = 0;
         const orderItemsData = cart.items.map((cartItem) => {
           const itemPrice = cartItem.item.price;
-          totalAmount += itemPrice * cartItem.quantity;
+          subtotal += itemPrice * cartItem.quantity;
           return {
             itemId: cartItem.itemId,
             quantity: cartItem.quantity,
@@ -75,6 +96,8 @@ export class OrdersRepository {
             itemThumbnail: cartItem.item.image,
           };
         });
+
+        const totals = this.calculateOrderTotals(subtotal);
 
         // 4. Generate a unique human-readable order number
         const orderNumber = `EX-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -95,7 +118,10 @@ export class OrdersRepository {
           data: {
             orderNumber,
             userId,
-            totalAmount,
+            subtotal: totals.subtotal,
+            gstAmount: totals.gstAmount,
+            deliveryFee: totals.deliveryFee,
+            totalAmount: totals.totalAmount,
             branchId: createOrderDto.branchId,
             shippingAddress: address as any, // Snapshotting the full address object
             contactNumber: resolvedContactNumber,
@@ -142,7 +168,7 @@ export class OrdersRepository {
         const payment = await tx.payment.create({
           data: {
             orderId: order.id,
-            amount: totalAmount,
+            amount: totals.totalAmount,
             provider: createOrderDto.paymentMethod,
             status: PaymentStatus.PENDING,
           },
@@ -158,7 +184,7 @@ export class OrdersRepository {
         // 8. Razorpay Order Integration
         if (createOrderDto.paymentMethod === 'ONLINE') {
           try {
-            const rzpOrder = await this.razorpayService.createOrder(totalAmount, order.orderNumber);
+            const rzpOrder = await this.razorpayService.createOrder(totals.totalAmount, order.orderNumber);
             result.razorpayOrderId = rzpOrder.id;
             result.razorpayKey = this.configService.get<string>('RAZORPAY_KEY_ID');
             
@@ -803,10 +829,21 @@ export class OrdersRepository {
   private transformOrder(order: any, isStaff: boolean = false) {
     if (!order) return order;
 
-    // Convert Decimal fields to Numbers for clean JSON serialization
-    if (order.totalAmount) {
-      order.totalAmount = Number(order.totalAmount);
-    }
+    // Group price breakdown into a standardized paymentSummary object for the frontend
+    order.paymentSummary = {
+      subtotal: Number(order.subtotal || 0),
+      gstAmount: Number(order.gstAmount || 0),
+      deliveryFee: Number(order.deliveryFee || 0),
+      totalAmount: Number(order.totalAmount || 0),
+      gstRate: 18,
+      deliveryThreshold: 1000,
+    };
+
+    // Remove the flat fields from the root to keep the response clean
+    delete order.subtotal;
+    delete order.gstAmount;
+    delete order.deliveryFee;
+    delete order.totalAmount;
 
     if (order.items) {
       order.items = order.items.map((item: any) => {

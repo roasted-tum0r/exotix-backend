@@ -105,10 +105,17 @@ export class CartService {
           isGuestCart,
         );
         if (cart && cart.items) {
-          cart.items = cart.items.map((cartItem: any) => ({
-            ...cartItem,
-            item: this.itemRepository.transformItemImages(cartItem.item),
-          }));
+          let subtotal = 0;
+          cart.items = cart.items.map((cartItem: any) => {
+            subtotal += cartItem.item.price * cartItem.quantity;
+            return {
+              ...cartItem,
+              item: this.itemRepository.transformItemImages(cartItem.item),
+            };
+          });
+
+          // Add Price Summary for Frontend
+          cart.paymentSummary = this.calculateTotals(subtotal);
         }
         return {
           statusCode: HttpStatus.OK,
@@ -132,6 +139,22 @@ export class CartService {
         message: 'Failed to get cart',
       });
     }
+  }
+
+  private calculateTotals(subtotal: number) {
+    const gstRate = 0.18;
+    const gstAmount = subtotal * gstRate;
+    const deliveryFee = subtotal > 1000 ? 0 : 500;
+    const totalAmount = subtotal + gstAmount + deliveryFee;
+
+    return {
+      subtotal: Math.round(subtotal * 100) / 100,
+      gstAmount: Math.round(gstAmount * 100) / 100,
+      deliveryFee: Math.round(deliveryFee * 100) / 100,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      gstRate: 18,
+      deliveryThreshold: 1000,
+    };
   }
   async finalCartCountService({
     cartId,

@@ -163,4 +163,12 @@ export class RedisService {
   async getKeys(pattern: string): Promise<string[]> {
     return await this.redis.keys(pattern);
   }
+
+  /**
+   * Get the remaining TTL of a key in seconds.
+   * Returns -2 if key does not exist, -1 if no TTL.
+   */
+  async getTTL(key: string): Promise<number> {
+    return await this.redis.ttl(key);
+  }
 }

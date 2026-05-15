@@ -179,7 +179,7 @@ export class OrdersRepository {
           where: { cartId: cart.id },
         });
 
-        const result = this.transformOrder(order);
+        const result = await this.transformOrder(order);
 
         // 8. Razorpay Order Integration
         if (createOrderDto.paymentMethod === 'ONLINE') {
@@ -300,7 +300,7 @@ export class OrdersRepository {
       }
     }
 
-    return this.transformOrder(order, isStaff);
+    return await this.transformOrder(order, isStaff);
   }
 
   async findAllOrders(searchDto: OrderSearchDto, user: User) {
@@ -423,11 +423,14 @@ export class OrdersRepository {
         }),
         this.prisma.order.count({ where }),
       ]);
+      const transformedOrders = await Promise.all(
+        orders.map((order) => this.transformOrder(order)),
+      );
       return {
         total,
         currentPage: page,
         totalPages: Math.ceil(total / limit),
-        results: orders.map((order) => this.transformOrder(order)),
+        results: transformedOrders,
       };
     } catch (error) {
       AppLogger.error('Repository findAllOrders failed', error.stack);
@@ -472,7 +475,7 @@ export class OrdersRepository {
         },
       });
 
-      return this.transformOrder(updatedOrder);
+      return await this.transformOrder(updatedOrder);
     });
   }
 
@@ -546,7 +549,7 @@ export class OrdersRepository {
         },
       });
 
-      return this.transformOrder(updatedOrder);
+      return await this.transformOrder(updatedOrder);
     });
   }
 
@@ -594,7 +597,24 @@ export class OrdersRepository {
         );
       }
 
-      return { message: 'Failure recorded and user notified' };
+      const updatedOrder = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { item: { include: { images: true } } } },
+          payments: true,
+          user: true,
+        },
+      });
+ 
+      const ttl = await this.redisService.getTTL(`order_expiry:${orderId}`);
+ 
+      const transformed = await this.transformOrder(updatedOrder);
+ 
+      return {
+        ...transformed,
+        paymentExpirySeconds: ttl > 0 ? ttl : 0,
+        message: 'Payment failed but your order is placed. Please retry within the time limit.',
+      };
     });
   }
 
@@ -844,8 +864,15 @@ export class OrdersRepository {
     }
   }
 
-  private transformOrder(order: any, isStaff: boolean = false) {
+  private async transformOrder(order: any, isStaff: boolean = false) {
     if (!order) return order;
+
+    // Fetch real-time payment expiry if applicable
+    let paymentExpirySeconds = 0;
+    if (order.status === OrderStatus.PENDING || order.paymentStatus === PaymentStatus.FAILED) {
+      const ttl = await this.redisService.getTTL(`order_expiry:${order.id}`);
+      paymentExpirySeconds = ttl > 0 ? ttl : 0;
+    }
 
     // Group price breakdown into a standardized paymentSummary object for the frontend
     order.paymentSummary = {
@@ -856,6 +883,9 @@ export class OrdersRepository {
       gstRate: 18,
       deliveryThreshold: 1000,
     };
+
+    // Inject statuses and TTL at the root
+    order.paymentExpirySeconds = paymentExpirySeconds;
 
     // Remove the flat fields from the root to keep the response clean
     delete order.subtotal;

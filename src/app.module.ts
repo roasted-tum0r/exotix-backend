@@ -29,9 +29,12 @@ import { BannersModule } from './modules/banners/banners.module';
 import { AppDataModule } from './modules/app-data/app-data.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { RazorpayModule } from './services/razorpay/razorpay.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { ActivityLogModule } from './modules/activity-log/activity-log.module';
 
 @Module({
   imports: [
+    ActivityLogModule,
     RazorpayModule,
     RedisModule,
     AuthModule,
@@ -69,6 +72,7 @@ import { RazorpayModule } from './services/razorpay/razorpay.module';
     BannersModule,
     AppDataModule,
     OrdersModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [

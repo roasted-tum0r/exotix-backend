@@ -169,7 +169,7 @@ export class Templates {
     `;
   }
 
-   static unsubscribeConfirmationEmail(email: string): string {
+  static unsubscribeConfirmationEmail(email: string): string {
     return `
 <!DOCTYPE html>
 <html>
@@ -313,7 +313,7 @@ export class Templates {
       </tr>
     `).join('');
 
-    const address = typeof shippingAddress === 'string' ? shippingAddress : 
+    const address = typeof shippingAddress === 'string' ? shippingAddress :
       `${shippingAddress?.houseNo || ''} ${shippingAddress?.streetName || ''}, ${shippingAddress?.city || ''}, ${shippingAddress?.state || ''} - ${shippingAddress?.zipcode || shippingAddress?.postalCode || ''}`;
 
     return `
@@ -498,4 +498,67 @@ export class Templates {
 </html>
     `;
   }
+  static inventoryUpdateEmail(params: {
+    itemName: string;
+    branchName: string;
+    quantity: number;
+    updatedBy: string;
+    type: 'ADD' | 'UPDATE' | 'DEDUCT';
+  }): string {
+    const { itemName, branchName, quantity, updatedBy, type } = params;
+    const color = type === 'DEDUCT' ? '#c53030' : '#27ae60';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f4; padding: 20px; }
+    .container { max-width: 600px; margin: auto; background: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .header { border-bottom: 2px solid #edf2f7; padding-bottom: 20px; margin-bottom: 20px; }
+    .title { font-size: 20px; font-weight: bold; color: #1a4031; }
+    .content { color: #2d3748; line-height: 1.6; }
+    .highlight { font-weight: bold; color: ${color}; }
+    .footer { margin-top: 30px; font-size: 12px; color: #718096; border-top: 1px solid #edf2f7; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">📦 Inventory Update Notification</div>
+    </div>
+    <div class="content">
+      <p>Hello Admin,</p>
+      <p>This is to notify you that an inventory record has been updated.</p>
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #718096;">Item:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${itemName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #718096;">Branch:</td>
+          <td style="padding: 8px 0; font-weight: bold;">${branchName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #718096;">New Quantity:</td>
+          <td style="padding: 8px 0;" class="highlight">${quantity} units</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #718096;">Updated By:</td>
+          <td style="padding: 8px 0;">${updatedBy}</td>
+        </tr>
+      </table>
+      <p style="margin-top: 20px;">Please check the admin dashboard for more details.</p>
+    </div>
+    <div class="footer">
+      Anandini's Inventory Management System<br/>
+      &copy; ${new Date().getFullYear()} Anandini
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  }
 }
+

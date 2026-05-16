@@ -417,10 +417,13 @@ model Inventory {
   itemId    String
   branchId  String
   quantity  Int
+  metadata  Json?       @default("{}")
   updatedAt DateTime @updatedAt
 
   item      Item   @relation(fields: [itemId], references: [id])
   branch    Branch @relation(fields: [branchId], references: [id])
+
+  @@unique([itemId, branchId])
 }
 
 model Employee {

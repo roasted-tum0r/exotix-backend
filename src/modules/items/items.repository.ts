@@ -35,6 +35,12 @@ export class ItemsRepository {
           select: { id: true },
         },
       }),
+      inventories: {
+        select: {
+          branchId: true,
+          quantity: true,
+        },
+      },
     };
   }
 
@@ -83,6 +89,12 @@ export class ItemsRepository {
           select: { id: true },
         },
       }),
+      inventories: {
+        select: {
+          branchId: true,
+          quantity: true,
+        },
+      },
     };
   }
   // ─────────────────────────────────────────────────────────────────────────────
@@ -440,6 +452,7 @@ export class ItemsRepository {
             isFeatured: true,
             offer: true,
             category: { select: { id: true, name: true } },
+            inventories: { select: { branchId: true, quantity: true } },
             images: {
               select: { ownerType: true, imageUrl: true, publicId: true },
               where: {
@@ -498,6 +511,7 @@ export class ItemsRepository {
           isFeatured: true,
           offer: true,
           category: { select: { id: true, name: true } },
+          inventories: { select: { branchId: true, quantity: true } },
           images: {
             select: { ownerType: true, imageUrl: true, publicId: true },
             where: {

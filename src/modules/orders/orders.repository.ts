@@ -10,6 +10,7 @@ import { Templates } from 'src/config/templates/template';
 import { ConfigService } from '@nestjs/config';
 import { RazorpayService } from 'src/services/razorpay/razorpay.service';
 import { RedisService } from 'src/services/redis/redis.service';
+import { InventoryRepository } from '../inventory/inventory.repository';
 
 @Injectable()
 export class OrdersRepository {
@@ -19,6 +20,7 @@ export class OrdersRepository {
     private readonly configService: ConfigService,
     private readonly razorpayService: RazorpayService,
     private readonly redisService: RedisService,
+    private readonly inventoryRepo: InventoryRepository,
   ) { }
 
   /**
@@ -62,6 +64,29 @@ export class OrdersRepository {
             statusCode: HttpStatus.BAD_REQUEST,
             message: 'Your cart is empty. Please add items before checking out.',
           });
+        }
+
+        // 1.5 Stock Check & Initial Deduction
+        for (const cartItem of cart.items) {
+          const stock = await this.inventoryRepo.checkStock(
+            cartItem.itemId,
+            createOrderDto.branchId,
+            cartItem.quantity,
+          );
+
+          if (!stock.available) {
+            throw new BadRequestException(
+              `Insufficient stock for item: ${cartItem.item.name}. Available: ${stock.currentStock}`,
+            );
+          }
+
+          // Deduct stock immediately to "block" it
+          await this.inventoryRepo.deductStockTx(
+            tx,
+            cartItem.itemId,
+            createOrderDto.branchId,
+            cartItem.quantity,
+          );
         }
 
         // 2. Fetch address for snapshotting
@@ -287,13 +312,27 @@ export class OrdersRepository {
     if (order.status === OrderStatus.PENDING && isOnline) {
       const deadline = await this.redisService.get(`order_hard_deadline:${order.id}`);
       if (!deadline) {
-        await this.prisma.order.update({
-          where: { id: order.id },
-          data: {
-            status: OrderStatus.CANCELLED,
-            notes: order.notes ? `${order.notes}\nPayment window expired (24h limit reached).` : 'Payment window expired (24h limit reached).',
-          },
+        await this.prisma.$transaction(async (tx) => {
+          const updatedOrder = await tx.order.update({
+            where: { id: order.id },
+            data: {
+              status: OrderStatus.CANCELLED,
+              notes: order.notes ? `${order.notes}\nPayment window expired (24h limit reached).` : 'Payment window expired (24h limit reached).',
+            },
+            include: { items: true },
+          });
+
+          // Restore stock
+          for (const item of updatedOrder.items) {
+            await this.inventoryRepo.restoreStockTx(
+              tx,
+              item.itemId,
+              updatedOrder.branchId,
+              item.quantity,
+            );
+          }
         });
+
         order.status = OrderStatus.CANCELLED;
         // Notify user via email (passive)
         this.sendOrderStatusEmail(order.id, OrderStatus.CANCELLED).catch(e => AppLogger.error(`Passive cancellation email failed: ${e.message}`));
@@ -641,13 +680,24 @@ export class OrdersRepository {
       const hardDeadline = await this.redisService.get(`order_hard_deadline:${orderId}`);
       if (!hardDeadline) {
         // If deadline expired, cancel the order automatically
-        await tx.order.update({
+        const updatedOrder = await tx.order.update({
           where: { id: orderId },
           data: {
             status: OrderStatus.CANCELLED,
             notes: order.notes ? `${order.notes}\nPayment window expired (24h limit reached).` : 'Payment window expired (24h limit reached).',
           },
+          include: { items: true },
         });
+
+        // Restore stock
+        for (const item of updatedOrder.items) {
+          await this.inventoryRepo.restoreStockTx(
+            tx,
+            item.itemId,
+            updatedOrder.branchId,
+            item.quantity,
+          );
+        }
         
         // Cleanup 10m timer if it exists
         await this.redisService.deleteKey(`order_expiry:${orderId}`);
@@ -715,7 +765,18 @@ export class OrdersRepository {
           status: OrderStatus.CANCELLED,
           notes: order.notes ? `${order.notes}\nCancelled by user.` : 'Cancelled by user.',
         },
+        include: { items: true },
       });
+
+      // Restore stock
+      for (const item of updatedOrder.items) {
+        await this.inventoryRepo.restoreStockTx(
+          tx,
+          item.itemId,
+          updatedOrder.branchId,
+          item.quantity,
+        );
+      }
 
       // Cleanup Redis timers
       await this.redisService.deleteKey(`order_expiry:${orderId}`);
@@ -760,18 +821,22 @@ export class OrdersRepository {
 
       // Perform side-effects based on target status
       if (dto.status === OrderStatus.CANCELLED || dto.status === OrderStatus.RETURNED) {
-        // TODO: Implement inventory restoration when inventory module is complete
-        // Example:
-        // for (const item of order.items) {
-        //   await tx.inventory.update({
-        //     where: { itemId_branchId: ... },
-        //     data: { quantity: { increment: item.quantity } }
-        //   });
-        // }
+        // Restore stock when order is cancelled or returned
+        for (const item of order.items) {
+          await this.inventoryRepo.restoreStockTx(
+            tx,
+            item.itemId,
+            order.branchId,
+            item.quantity,
+          );
+        }
       }
 
       if (dto.status === OrderStatus.PROCESSING && order.status === OrderStatus.CONFIRMED) {
-        // TODO: Implement inventory deduction when inventory module is complete
+        // Note: Stock was already deducted at checkout.
+        // If we want to strictly follow "blocks it until payment is received",
+        // we already did that at checkout by deducting.
+        // No additional deduction needed here unless we changed the strategy.
       }
 
       // If status is being updated to CONFIRMED, we need to handle payment status as well
